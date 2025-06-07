@@ -1,0 +1,410 @@
+program Map{
+    struct node{
+        key: int;
+        val: int;
+        siz: int;
+        fa: struct node*;
+        son: struct node*[2];
+        lt: func bool(this, struct node*);
+        eq: func bool(this, struct node*);
+        push_up: func void(this);
+        is_which: func int(this);
+        rotate: func void(this);
+        splay: func void(this, struct node*);
+        find: func struct node*(this, struct node*);
+        next: func struct node*(this);
+        prev: func struct node*(this);
+    }
+
+    func node_lt(lhs: struct node*, rhs: struct node*): bool{
+        let res = lhs->key < rhs->key;
+        return res;
+    }
+    func node_eq(lhs: struct node*, rhs: struct node*): bool{
+        let res = lhs->key == rhs->key;
+        return res;
+    }
+    func node_push_up(nd: struct node*): void{
+        nd->siz = 1;
+        if (nd->son[0] != struct node*(default)) {
+            nd->siz = nd->siz + nd->son[0]->siz;
+        };
+        if (nd->son[1] != struct node*(default)) {
+            nd->siz = nd->siz + nd->son[1]->siz;
+        };
+        return default;
+    }
+    func node_is_which(nd: struct node*): int{
+        let res = 1;
+        if (nd->fa == struct node*(default)) {
+            res = 0;
+        } else {
+            if (nd == nd->fa->son[0]) {
+                res = 0;
+            };
+        };
+        return res;
+    }
+    func node_rotate(nd: struct node*): void{
+        let fa = nd->fa;
+        let which = nd->is_which();
+        nd->fa = fa->fa;
+        fa->son[which] = nd->son[which ^ 1];
+        if (nd->fa != struct node*(default)) {
+            nd->fa->son[fa->is_which()] = nd;
+        };
+        if (fa->son[which] != struct node*(default)) {
+            fa->son[which]->fa = fa;
+        };
+        fa->fa = nd;
+        nd->son[which ^ 1] = fa;
+        fa->push_up();
+        nd->push_up();
+        return default;
+    }
+    func node_splay(nd: struct node*, goal: struct node*): void{
+        while (nd->fa != goal) {
+            let fa = nd->fa;
+            if (fa->fa == goal) {
+                nd->rotate();
+            } else {
+                if (fa->is_which() == nd->is_which()) {
+                    fa->rotate();
+                    nd->rotate();
+                } else {
+                    nd->rotate();
+                    nd->rotate();
+                };
+            };
+        };
+        return default;
+    }
+    func node_find(nd: struct node*, key: struct node*): struct node*{
+        let res = struct node*(default);
+        if (nd->eq(key)) {
+            res = nd;
+        } else {
+            let which = int(nd->lt(key));
+            if (nd->son[which] != struct node*(default)) {
+                res = nd->son[which]->find(key);
+            };
+        };
+        return res;
+    }
+    func node_next(nd: struct node*): struct node*{
+        if (nd->son[1] == struct node*(default)) {
+            while (nd != struct node*(default) && nd->is_which() == 1) {
+                nd = nd->fa;
+            };
+            nd = nd->fa;
+        } else {
+            nd = nd->son[1];
+            while (nd != struct node*(default) &&
+                nd->son[0] != struct node*(default)) {
+                nd = nd->son[0];
+            };
+        };
+        return nd;
+    }
+    func node_prev(nd: struct node*): struct node*{
+        if (nd->son[0] == struct node*(default)) {
+            while (nd != struct node*(default) && nd->is_which() == 0) {
+                nd = nd->fa;
+            };
+            nd = nd->fa;
+        } else {
+            nd = nd->son[0];
+            while (nd != struct node*(default) &&
+                nd->son[1] != struct node*(default)) {
+                nd = nd->son[1];
+            };
+        };
+        return nd;
+    }
+
+    func new_node(): struct node*{
+        let nd = struct node*(alloc(sizeof(struct node)));
+        nd->fa = struct node*(default);
+        nd->son[0] = struct node*(default);
+        nd->son[1] = struct node*(default);
+        nd->lt = node_lt;
+        nd->eq = node_eq;
+        nd->push_up = node_push_up;
+        nd->is_which = node_is_which;
+        nd->rotate = node_rotate;
+        nd->splay = node_splay;
+        nd->find = node_find;
+        nd->next = node_next;
+        nd->prev = node_prev;
+        return nd;
+    }
+    func del_node(nd: struct node*): void{
+        free(nd);
+        return default;
+    }
+
+    func copy_node(nd: struct node*): struct node*{
+        let new = new_node();
+        if (nd->son[0] != struct node*(default)) {
+            new->son[0] = copy_node(nd->son[0]);
+            new->son[0]->fa = new;
+        };
+        if (nd->son[1] != struct node*(default)) {
+            new->son[1] = copy_node(nd->son[1]);
+            new->son[1]->fa = new;
+        };
+        new->key = nd->key;
+        new->val = nd->val;
+        new->push_up();
+        return new;
+    }
+    func free_node(nd: struct node*): void{
+        if (nd->son[0] != struct node*(default)) {
+            free_node(nd->son[0]);
+            del_node(nd->son[0]);
+        };
+        if (nd->son[1] != struct node*(default)) {
+            free_node(nd->son[1]);
+            del_node(nd->son[1]);
+        };
+        return default;
+    }
+
+    struct splay{
+        root: struct node*;
+        insert: func bool(this, struct node*);
+        erase: func bool(this, struct node*);
+        find: func struct node*(this, struct node*);
+        begin: func struct node*(this);
+        end: func struct node*(this);
+    }
+
+    func splay_insert(tr: struct splay*, key: struct node*): bool{
+        let res = false;
+        if (tr->root == struct node*(default)) {
+            tr->root = new_node();
+            tr->root->key = key->key;
+            tr->root->val = key->val;
+            res = true;
+        };
+        while (!tr->root->eq(key)) {
+            let which = int(tr->root->lt(key));
+            if (tr->root->son[which] == struct node*(default)) {
+                tr->root->son[which] = new_node();
+                tr->root->son[which]->key = key->key;
+                tr->root->son[which]->val = key->val;
+                tr->root->son[which]->fa = tr->root;
+                res = true;
+            };
+            tr->root = tr->root->son[which];
+        };
+        tr->root->push_up();
+        tr->root->splay(struct node*(default));
+        return res;
+    }
+    func splay_erase(tr: struct splay*, key: struct node*): bool{
+        let res = false;
+        if (tr->root != struct node*(default)) {
+            tr->root = tr->root->find(key);
+        };
+        if (tr->root != struct node*(default)) {
+            tr->root->splay(struct node*(default));
+            if (tr->root->siz == 1) {
+                del_node(tr->root);
+                tr->root = struct node*(default);
+            } else {
+                if (tr->root->son[0] == struct node*(default)) {
+                    tr->root = tr->root->son[1];
+                    del_node(tr->root->fa);
+                    tr->root->fa = struct node*(default);
+                } else {
+                    if (tr->root->son[1] == struct node*(default)) {
+                        tr->root = tr->root->son[0];
+                        del_node(tr->root->fa);
+                        tr->root->fa = struct node*(default);
+                    } else {
+                        tr->root->next()->splay(tr->root);
+                        tr->root->son[1]->son[0] = tr->root->son[0];
+                        tr->root->son[0]->fa = tr->root->son[1];
+                        tr->root->son[1]->push_up();
+                        tr->root = tr->root->son[1];
+                        del_node(tr->root->fa);
+                        tr->root->fa = struct node*(default);
+                    };
+                };
+            };
+            res = true;
+        };
+        return res;
+    }
+    func splay_find(tr: struct splay*, key: struct node*): struct node*{
+        let nd = struct node*(default);
+        if (tr->root != struct node*(default)) {
+            nd = tr->root->find(key);
+        };
+        return nd;
+    }
+    func splay_begin(tr: struct splay*): struct node*{
+        let nd = tr->root;
+        while (nd != struct node*(default) &&
+            nd->son[0] != struct node*(default)) {
+            nd = nd->son[0];
+        };
+        return nd;
+    }
+    func splay_end(tr: struct splay*): struct node* {
+        let nd = struct node*(default);
+        return nd;
+    }
+
+    func new_splay(): struct splay*{
+        let tr = struct splay*(alloc(sizeof(struct splay)));
+        tr->root = struct node*(default);
+        tr->insert = splay_insert;
+        tr->erase = splay_erase;
+        tr->find = splay_find;
+        tr->begin = splay_begin;
+        tr->end = splay_end;
+        return tr;
+    }
+    func del_splay(tr: struct splay*): void{
+        if (tr->root != struct node*(default)) {
+            free_node(tr->root);
+            del_node(tr->root);
+        };
+        free(tr);
+        return default;
+    }
+
+    struct map{
+        tr: struct splay*;
+        insert: func bool(this, int, int);
+        erase: func bool(this, int);
+        size: func int(this);
+        empty: func bool(this);
+        begin: func struct node*(this);
+        end: func struct node*(this);
+        find: func struct node*(this, int);
+        at: func int*(this, int);
+    }
+
+    func map_insert(m: struct map*, key: int, val: int): bool{
+        let buf = struct node*(alloc(sizeof(struct node)));
+        buf->key = key;
+        buf->val = val;
+        let res = m->tr->insert(buf);
+        free(buf);
+        return res;
+    }
+    func map_erase(m: struct map*, key: int): bool{
+        let buf = struct node*(alloc(sizeof(struct node)));
+        buf->key = key;
+        let res = m->tr->erase(buf);
+        free(buf);
+        return res;
+    }
+    func map_size(m: struct map*): int{
+        let res = 0;
+        if (m->tr->root != struct node*(default)) {
+            res = m->tr->root->siz;
+        };
+        return res;
+    }
+    func map_empty(m: struct map*): bool{
+        let res = true;
+        if (m->tr->root != struct node*(default)) {
+            res = false;
+        };
+        return res;
+    }
+    func map_begin(m: struct map*): struct node*{
+        let res = m->tr->begin();
+        return res;
+    }
+    func map_end(m: struct map*): struct node*{
+        let res = m->tr->end();
+        return res;
+    }
+    func map_find(m: struct map*, key: int): struct node*{
+        let buf = struct node*(alloc(sizeof(struct node)));
+        buf->key = key;
+        let res = m->tr->find(buf);
+        free(buf);
+        return res;
+    }
+    func map_at(m: struct map*, key: int): int*{
+        let it = m->find(key);
+        let res: int*;
+        if (it == struct node*(default)) {
+            m->insert(key, 0);
+            it = m->find(key);
+        };
+        res = &it->val;
+        return res;
+    }
+
+    func new_map(): struct map*{
+        let m = struct map*(alloc(sizeof(struct map)));
+        m->tr = new_splay();
+        m->insert = map_insert;
+        m->erase = map_erase;
+        m->size = map_size;
+        m->empty = map_empty;
+        m->begin = map_begin;
+        m->end = map_end;
+        m->find = map_find;
+        m->at = map_at;
+        return m;
+    }
+    func del_map(m: struct map*): void{
+        del_splay(m->tr);
+        free(m);
+        return default;
+    }
+    func copy_map(m: struct map*): struct map*{
+        let new = struct map*(alloc(sizeof(struct map)));
+        new->tr = new_splay();
+        if (m->tr->root != struct node*(default)) {
+            new->tr->root = copy_node(m->tr->root);
+        };
+        new->insert = map_insert;
+        new->erase = map_erase;
+        new->size = map_size;
+        new->empty = map_empty;
+        new->begin = map_begin;
+        new->end = map_end;
+        new->find = map_find;
+        new->at = map_at;
+        return new;
+    }
+
+    main{
+        let m = new_map();
+        m->insert(1, 2);
+        m->insert(2, 4);
+        m->insert(3, 6);
+        let n = copy_map(m);
+        m->erase(2);
+        n->insert(4, 8);
+        output(1, ' ', *m->at(1), '\n');
+        output(2, ' ', *m->at(2), '\n');
+        output(3, ' ', *m->at(3), '\n');
+        let it = n->begin();
+        while (it != n->end()) {
+            output(it->key, ' ', it->val, '\n');
+            it = it->next();
+        };
+        del_map(n);
+        del_map(m);
+    }
+}
+
+// 输入：（无）
+// 输出：
+// 1 2
+// 2 0
+// 3 6
+// 1 2
+// 2 4
+// 3 6
+// 4 8

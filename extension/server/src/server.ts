@@ -1,0 +1,434 @@
+import {
+  createConnection,
+  TextDocuments,
+  Diagnostic,
+  DiagnosticSeverity,
+  ProposedFeatures,
+  InitializeParams,
+  DidChangeConfigurationNotification,
+  CompletionItem,
+  CompletionItemKind,
+  TextDocumentSyncKind,
+  DefinitionParams,
+  Definition,
+  Location,
+  Position,
+  Hover,
+  HoverParams,
+  MarkupKind
+} from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { spawn } from "child_process";
+import * as path from "path";
+
+const connection = createConnection(ProposedFeatures.all);
+const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+let hasConfigurationCapability = false;
+
+const builtInKeywords = new Set([
+  "program", "struct", "func", "main", "return", "let",
+  "int", "bool", "char", "void", "float", "string",
+  "if", "else", "while", "try", "catch", "input", "output",
+  "alloc", "free", "this", "sizeof", "true", "false", "default"
+]);
+
+interface DefinitionEntry {
+  name: string;
+  loc: Location;
+  scopeStart: number;
+  scopeEnd: number;
+  typeName?: string;
+}
+
+let definitions: DefinitionEntry[] = [];
+let pendingParamDefs: Array<{ name: string; loc: Location; typeName?: string }> = [];
+let structNames = new Set<string>();
+
+function buildSymbolTable(doc: TextDocument) {
+  definitions = [];
+  pendingParamDefs = [];
+  structNames.clear();
+
+  const lines = doc.getText().split(/\r?\n/);
+  const total = lines.length;
+
+  const funcSig = /\bfunc\s+([A-Za-z_]\w*)\s*\(\s*([^)]*)\s*\)/;
+  const structDefRe = /\bstruct\s+([A-Za-z_]\w*)/;
+  const letStruct = /\blet\s+([A-Za-z_]\w*)\s*:\s*struct\s+([A-Za-z_]\w*)/;
+  const letInitStruct = /\blet\s+([A-Za-z_]\w*)\s*=\s*struct\s+([A-Za-z_]\w*)\s*\*/;
+  const letType = /\blet\s+([A-Za-z_]\w*)\s*:\s*([A-Za-z_]\w*)/;
+  const letSimple = /\blet\s+([A-Za-z_]\w*)/;
+  const fieldDef = /^\s*([A-Za-z_]\w*)\s*:\s*([^;]+);/;
+
+  const blockStack: Array<{ start: number; structName?: string }> = [];
+
+  for (let i = 0; i < total; i++) {
+    const line = lines[i];
+
+    for (const ch of line) {
+      if (ch === "}" && blockStack.length) {
+        const { start } = blockStack.pop()!;
+        definitions.forEach(d => {
+          if (d.scopeStart === start && d.scopeEnd === Infinity) {
+            d.scopeEnd = i;
+          }
+        });
+      }
+    }
+
+    let m = funcSig.exec(line);
+    if (m) {
+      const fn = m[1], params = m[2].trim();
+      const idx = line.indexOf(fn);
+      definitions.push({
+        name: fn,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + fn.length }
+          }
+        },
+        scopeStart: 0,
+        scopeEnd: total
+      });
+      if (params) {
+        params.split(",").map(s => s.trim()).forEach(p => {
+          const [pn, pt] = p.split(":").map(x => x.trim());
+          const pidx = line.indexOf(pn);
+          const ploc: Location = {
+            uri: doc.uri,
+            range: {
+              start: { line: i, character: pidx },
+              end: { line: i, character: pidx + pn.length }
+            }
+          };
+          const sm = /^struct\s+([A-Za-z_]\w*)/.exec(pt);
+          pendingParamDefs.push({ name: pn, loc: ploc, typeName: sm ? sm[1] : undefined });
+        });
+      }
+    }
+
+    m = structDefRe.exec(line);
+    let nextStruct: string | undefined;
+    if (m) {
+      const st = m[1];
+      structNames.add(st);
+      const idx = line.indexOf(st);
+      definitions.push({
+        name: st,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + st.length }
+          }
+        },
+        scopeStart: 0,
+        scopeEnd: total
+      });
+      nextStruct = st;
+    }
+
+    m = letStruct.exec(line);
+    if (m) {
+      const varName = m[1], st = m[2];
+      const idx = line.indexOf(varName);
+      const ps = blockStack.length ? blockStack[blockStack.length - 1].start : 0;
+      definitions.push({
+        name: varName,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + varName.length }
+          }
+        },
+        scopeStart: ps,
+        scopeEnd: Infinity,
+        typeName: st
+      });
+    }
+    else if ((m = letInitStruct.exec(line))) {
+      const varName = m[1], st = m[2];
+      const idx = line.indexOf(varName);
+      const ps = blockStack.length ? blockStack[blockStack.length - 1].start : 0;
+      definitions.push({
+        name: varName,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + varName.length }
+          }
+        },
+        scopeStart: ps,
+        scopeEnd: Infinity,
+        typeName: st
+      });
+    }
+    else if ((m = letType.exec(line))) {
+      const varName = m[1], tp = m[2];
+      const idx = line.indexOf(varName);
+      const ps = blockStack.length ? blockStack[blockStack.length - 1].start : 0;
+      definitions.push({
+        name: varName,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + varName.length }
+          }
+        },
+        scopeStart: ps,
+        scopeEnd: Infinity,
+        typeName: structNames.has(tp) ? tp : undefined
+      });
+    }
+    else if ((m = letSimple.exec(line))) {
+      const varName = m[1];
+      const idx = line.indexOf(varName);
+      const ps = blockStack.length ? blockStack[blockStack.length - 1].start : 0;
+      definitions.push({
+        name: varName,
+        loc: {
+          uri: doc.uri,
+          range: {
+            start: { line: i, character: idx },
+            end: { line: i, character: idx + varName.length }
+          }
+        },
+        scopeStart: ps,
+        scopeEnd: Infinity
+      });
+    }
+
+    m = fieldDef.exec(line);
+    if (m && blockStack.length) {
+      const top = blockStack[blockStack.length - 1];
+      if (top.structName) {
+        const fld = m[1];
+        const idx = line.indexOf(fld);
+        definitions.push({
+          name: fld,
+          loc: {
+            uri: doc.uri,
+            range: {
+              start: { line: i, character: idx },
+              end: { line: i, character: idx + fld.length }
+            }
+          },
+          scopeStart: 0,
+          scopeEnd: total,
+          typeName: top.structName
+        });
+      }
+    }
+
+    for (const ch of line) {
+      if (ch === "{") {
+        blockStack.push({ start: i, structName: nextStruct });
+        if (pendingParamDefs.length) {
+          pendingParamDefs.forEach(p => {
+            definitions.push({
+              name: p.name,
+              loc: p.loc,
+              scopeStart: i,
+              scopeEnd: Infinity,
+              typeName: p.typeName
+            });
+          });
+          pendingParamDefs = [];
+        }
+        nextStruct = undefined;
+      }
+    }
+  }
+
+  definitions.forEach(d => {
+    if (d.scopeEnd === Infinity) d.scopeEnd = total;
+  });
+}
+
+function getWordAtPosition(doc: TextDocument, pos: Position): string | null {
+  const lines = doc.getText().split(/\r?\n/);
+  if (pos.line < 0 || pos.line >= lines.length) return null;
+  const line = lines[pos.line];
+  let s = pos.character, e = pos.character;
+  while (s > 0 && /\w/.test(line[s - 1])) s--;
+  while (e < line.length && /\w/.test(line[e])) e++;
+  return s < e ? line.slice(s, e) : null;
+}
+
+function getMemberAccess(doc: TextDocument, pos: Position): { object: string; field: string } | null {
+  const line = doc.getText({
+    start: { line: pos.line, character: 0 },
+    end: { line: pos.line, character: Number.MAX_SAFE_INTEGER }
+  });
+  const re = /([A-Za-z_]\w*)\s*(?:\.|->)\s*([A-Za-z_]\w*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line))) {
+    const obj = m[1], fld = m[2];
+    const full = m[0];
+    const offset = line.indexOf(full, re.lastIndex - full.length);
+    const fldStart = offset + full.indexOf(fld);
+    const fldEnd = fldStart + fld.length;
+    if (pos.character >= fldStart && pos.character <= fldEnd) {
+      return { object: obj, field: fld };
+    }
+  }
+  return null;
+}
+
+function findDefinition(name: string, ln: number, structName?: string): DefinitionEntry | null {
+  if (structName) {
+    const fd = definitions.find(d =>
+      d.name === name &&
+      d.typeName === structName &&
+      d.scopeStart <= ln && ln < d.scopeEnd
+    );
+    if (fd) return fd;
+  }
+  let best: DefinitionEntry | null = null;
+  for (const d of definitions) {
+    if (d.name === name && d.scopeStart <= ln && ln < d.scopeEnd) {
+      if (!best || d.scopeStart > best.scopeStart) best = d;
+    }
+  }
+  return best;
+}
+
+connection.onInitialize((params: InitializeParams) => {
+  hasConfigurationCapability =
+    !!(params.capabilities.workspace && params.capabilities.workspace.configuration);
+  return {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Full,
+      completionProvider: { resolveProvider: false },
+      definitionProvider: true,
+      hoverProvider: true
+    }
+  };
+});
+connection.onInitialized(() => {
+  if (hasConfigurationCapability) {
+    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+  }
+});
+
+documents.onDidChangeContent(async change => {
+  buildSymbolTable(change.document);
+  await validateTextDocument(change.document);
+});
+
+async function validateTextDocument(doc: TextDocument) {
+  const text = doc.getText();
+  const diagnostics: Diagnostic[] = [];
+  return new Promise<void>(resolve => {
+    const compilerPath = path.join(__dirname, "..", "bin", "l25-compiler");
+    const cp = spawn(compilerPath, [], { stdio: ["pipe", "ignore", "pipe"] });
+    let buf = "";
+    cp.stderr.setEncoding("utf8");
+    cp.stderr.on("data", c => (buf += c));
+    cp.on("error", err => {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        message: `Cannot start compiler: ${err.message}`,
+        source: "l25-compiler"
+      });
+      connection.sendDiagnostics({ uri: doc.uri, diagnostics });
+      resolve();
+    });
+    cp.on("close", () => {
+      const ls = buf.split(/\r?\n/);
+      const re = /Compile error at line\s+(\d+),\s*column\s+(\d+):\s*(.*)/i;
+      for (const l of ls) {
+        if (!l.trim()) continue;
+        const m = re.exec(l);
+        if (m) {
+          const ln = parseInt(m[1], 10) - 1,
+            cn = parseInt(m[2], 10) - 1;
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start: { line: ln, character: cn }, end: { line: ln, character: cn + 1 } },
+            message: m[3],
+            source: "l25-compiler"
+          });
+        } else {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            message: l,
+            source: "l25-compiler"
+          });
+        }
+      }
+      connection.sendDiagnostics({ uri: doc.uri, diagnostics });
+      resolve();
+    });
+    cp.stdin.write(text);
+    cp.stdin.end();
+  });
+}
+
+connection.onDefinition((params: DefinitionParams): Definition | null => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const w = getWordAtPosition(doc, params.position);
+  if (!w || builtInKeywords.has(w)) return null;
+
+  const member = getMemberAccess(doc, params.position);
+  const ln = params.position.line;
+  if (member) {
+    const od = findDefinition(member.object, ln);
+    if (od && od.typeName) {
+      const fd = findDefinition(member.field, ln, od.typeName);
+      if (fd) return [fd.loc];
+    }
+  }
+
+  const def = findDefinition(w, ln);
+  return def ? [def.loc] : null;
+});
+
+connection.onHover((params: HoverParams): Hover | null => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const w = getWordAtPosition(doc, params.position);
+  if (!w || builtInKeywords.has(w)) return null;
+
+  const member = getMemberAccess(doc, params.position);
+  const ln = params.position.line;
+  let def: DefinitionEntry | null = null;
+  if (member) {
+    const od = findDefinition(member.object, ln);
+    if (od && od.typeName) {
+      def = findDefinition(member.field, ln, od.typeName);
+    }
+  } else {
+    def = findDefinition(w, ln);
+  }
+  if (!def) return null;
+
+  const decl = doc.getText({
+    start: { line: def.loc.range.start.line, character: 0 },
+    end: { line: def.loc.range.start.line, character: Number.MAX_SAFE_INTEGER }
+  }).trim();
+
+  return {
+    contents: { kind: MarkupKind.Markdown, value: "```l25\n" + decl + "\n```" },
+    range: def.loc.range
+  };
+});
+
+connection.onCompletion((): CompletionItem[] => {
+  const kws = Array.from(builtInKeywords);
+  return kws.map(kw => ({ label: kw, kind: CompletionItemKind.Keyword }));
+});
+connection.onCompletionResolve(item => item);
+
+documents.listen(connection);
+connection.listen();

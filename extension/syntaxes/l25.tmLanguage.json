@@ -1,0 +1,161 @@
+{
+    "scopeName": "source.l25",
+    "name": "L25",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#declarations"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#constants"
+        },
+        {
+            "include": "#operators"
+        },
+        {
+            "include": "#identifiers"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash",
+                    "match": "\\/\\/.*$"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.l25",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.l25",
+                            "match": "\\\\."
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.l25",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.l25",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "declarations": {
+            "patterns": [
+                {
+                    "match": "\\b(func)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.declaration.function.l25"
+                        },
+                        "2": {
+                            "name": "entity.name.function"
+                        }
+                    }
+                },
+                {
+                    "match": "\\b(struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.declaration.struct.l25"
+                        },
+                        "2": {
+                            "name": "entity.name.function"
+                        }
+                    }
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.l25",
+                    "match": "\\b(program|main|return|let|if|else|while|try|catch|input|output|alloc|free|this|sizeof)\\b"
+                },
+                {
+                    "name": "storage.type.l25",
+                    "match": "\\b(int|bool|char|void|float|string)\\b"
+                },
+                {
+                    "name": "keyword.operator.l25",
+                    "match": "\\b(AND|OR|EQ|NEQ|LE|GE|LSH|RSH)\\b"
+                }
+            ]
+        },
+        "constants": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.integer.l25",
+                    "match": "\\b[0-9]+\\b"
+                },
+                {
+                    "name": "constant.numeric.float.l25",
+                    "match": "\\b[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b"
+                },
+                {
+                    "name": "constant.language.boolean.l25",
+                    "match": "\\b(true|false|TRUE|FALSE|default|DEFAULT)\\b"
+                },
+                {
+                    "name": "constant.character.l25",
+                    "match": "'([^\\\\']|\\\\.)'"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.assignment.l25",
+                    "match": "="
+                },
+                {
+                    "name": "keyword.operator.arithmetic.l25",
+                    "match": "[+\\-*/%]"
+                },
+                {
+                    "name": "keyword.operator.comparison.l25",
+                    "match": "(==|!=|<=|>=|<|>)"
+                },
+                {
+                    "name": "keyword.operator.bitwise.l25",
+                    "match": "(!|~|&&|\\|\\||&|\\||\\^|<<|>>)"
+                },
+                {
+                    "name": "punctuation.separator.l25",
+                    "match": "[;,(){}\\[\\].,:]"
+                },
+                {
+                    "name": "keyword.operator.pointer.l25",
+                    "match": "(\\*|&|->)"
+                }
+            ]
+        },
+        "identifiers": {
+            "patterns": [
+                {
+                    "name": "variable.other.l25",
+                    "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+                }
+            ]
+        }
+    }
+}

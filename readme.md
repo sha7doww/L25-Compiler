@@ -67,7 +67,7 @@ let pi = 3.14;  // 自动推导类型为 float
 struct node
 {
     val: int;
-    son: struct node*[2];      // 结构体指针实现二叉树结构
+    son: struct node*[2];     // 结构体指针实现二叉树结构
     push_up: func void(this); // 函数变量模拟成员函数，但需要手动赋值
 }
 ```

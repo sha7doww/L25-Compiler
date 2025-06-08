@@ -68,7 +68,7 @@ struct node
 {
     val: int;
     son: struct node*[2];      // 结构体指针实现二叉树结构
-    maintain: func void(this); // 函数变量实现类成员函数
+    push_up: func void(this); // 函数变量模拟成员函数，但需要手动赋值
 }
 ```
 
@@ -445,7 +445,7 @@ g++ -std=c++20 \
 
 **输出**：`build/compiler, build/interpreter, build/interpreterd`
 
-### 编译与执行
+#### 编译与执行
 
 ```
 ./run.sh sample/map.l25 -o sample/map.pcode

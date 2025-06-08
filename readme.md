@@ -238,8 +238,8 @@ left_expr // 左值表达式，在栈中存放起始地址
 |   factor ARROW IDENT
 ;
 right_expr // 右值表达式，在栈中存放完整内容
-:   right_expr AND right_expr
-|   right_expr OR right_expr
+:   right_expr AND compare_expr
+|   right_expr OR compare_expr
 |   compare_expr
 ;
 compare_expr
@@ -252,14 +252,14 @@ compare_expr
 |   bitwise_expr
 ;
 bitwise_expr
-:   bitwise_term '&' bitwise_term
-|   bitwise_term '|' bitwise_term
-|   bitwise_term '^' bitwise_term
+:   bitwise_expr '&' bitwise_term
+|   bitwise_expr '|' bitwise_term
+|   bitwise_expr '^' bitwise_term
 |   bitwise_term
 ;
 bitwise_term
-:   arith_expr LSH arith_expr
-|   arith_expr RSH arith_expr
+:   bitwise_term LSH arith_expr
+|   bitwise_term RSH arith_expr
 |   arith_expr
 ;
 arith_expr

@@ -833,7 +833,7 @@ left_expr
 ;
 
 right_expr
-:   right_expr AND right_expr
+:   right_expr AND compare_expr
     {
         if (typeTable[$1].kind == TYPE_BOOL &&
             typeTable[$3].kind == TYPE_BOOL)
@@ -849,7 +849,7 @@ right_expr
             exit(1);
         }
     }
-|   right_expr OR right_expr
+|   right_expr OR compare_expr
     {
         if (typeTable[$1].kind == TYPE_BOOL &&
             typeTable[$3].kind == TYPE_BOOL)
@@ -1023,7 +1023,7 @@ compare_expr
 ;
 
 bitwise_expr
-:   bitwise_term '&' bitwise_term
+:   bitwise_expr '&' bitwise_term
     {
         if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
@@ -1039,7 +1039,7 @@ bitwise_expr
             exit(1);
         }
     }
-|   bitwise_term '|' bitwise_term
+|   bitwise_expr '|' bitwise_term
     {
         if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
@@ -1055,7 +1055,7 @@ bitwise_expr
             exit(1);
         }
     }
-|   bitwise_term '^' bitwise_term
+|   bitwise_expr '^' bitwise_term
     {
         if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
@@ -1078,7 +1078,7 @@ bitwise_expr
 ;
 
 bitwise_term
-:   arith_expr LSH arith_expr
+:   bitwise_term LSH arith_expr
     {
         if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
@@ -1094,7 +1094,7 @@ bitwise_term
             exit(1);
         }
     }
-|   arith_expr RSH arith_expr
+|   bitwise_term RSH arith_expr
     {
         if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)

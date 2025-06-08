@@ -15,6 +15,7 @@ import {
   Position,
   Hover,
   HoverParams,
+  ReferenceParams,
   MarkupKind
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -306,6 +307,7 @@ connection.onInitialize((params: InitializeParams) => {
       textDocumentSync: TextDocumentSyncKind.Full,
       completionProvider: { resolveProvider: false },
       definitionProvider: true,
+      referencesProvider: true,
       hoverProvider: true
     }
   };
@@ -423,6 +425,79 @@ connection.onHover((params: HoverParams): Hover | null => {
     range: def.loc.range
   };
 });
+
+connection.onReferences((params: ReferenceParams): Location[] => {
+  const { textDocument: { uri }, position, context } = params;
+  const doc = documents.get(uri);
+  if (!doc) return [];
+
+  const w = getWordAtPosition(doc, position);
+  if (!w || builtInKeywords.has(w)) return [];
+
+  const ln = position.line;
+  let structName: string | undefined;
+  const member = getMemberAccess(doc, position);
+  let defEntry: DefinitionEntry | null = null;
+  if (member) {
+    const od = findDefinition(member.object, ln);
+    if (od) structName = od.typeName;
+    defEntry = structName
+      ? findDefinition(member.field, ln, structName)
+      : null;
+  } else {
+    defEntry = findDefinition(w, ln);
+  }
+  if (!defEntry) return [];
+  const entry = defEntry;
+
+  const results: Location[] = [];
+  for (const d of documents.all()) {
+    const text = d.getText();
+    const lines = text.split(/\r?\n/);
+    for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+      const lineText = lines[lineNum];
+      const memberRe = new RegExp(`\\b\\w+\\s*(?:\\.|->)\\s*${entry.name}\\b`, "g");
+      let m: RegExpExecArray | null;
+      while ((m = memberRe.exec(lineText))) {
+        const startChar = m.index + m[0].lastIndexOf(entry.name);
+        const endChar = startChar + entry.name.length;
+        if (lineNum >= entry.scopeStart && lineNum < entry.scopeEnd) {
+          results.push({
+            uri: d.uri,
+            range: {
+              start: { line: lineNum, character: startChar },
+              end: { line: lineNum, character: endChar }
+            }
+          });
+        }
+      }
+      const wordRe = new RegExp(`\\b${entry.name}\\b`, "g");
+      while ((m = wordRe.exec(lineText))) {
+        const startChar = m.index;
+        const endChar = startChar + entry.name.length;
+        if (lineNum >= entry.scopeStart && lineNum < entry.scopeEnd) {
+          results.push({
+            uri: d.uri,
+            range: {
+              start: { line: lineNum, character: startChar },
+              end: { line: lineNum, character: endChar }
+            }
+          });
+        }
+      }
+    }
+  }
+
+  if (!context.includeDeclaration) {
+    return results.filter(loc =>
+      !(loc.uri === entry.loc.uri
+        && loc.range.start.line === entry.loc.range.start.line
+        && loc.range.start.character === entry.loc.range.start.character)
+    );
+  }
+  return results;
+});
+
 
 connection.onCompletion((): CompletionItem[] => {
   const kws = Array.from(builtInKeywords);

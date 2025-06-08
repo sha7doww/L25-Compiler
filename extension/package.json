@@ -2,7 +2,7 @@
     "name": "l25-vscode",
     "displayName": "L25 Language Support",
     "publisher": "SpadeZ",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "engines": {
         "vscode": "^1.60.0"
     },

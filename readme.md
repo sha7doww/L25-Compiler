@@ -40,7 +40,7 @@ L25 语言编译器与类 Pcode 解释器
 │  ├─ map.l25               // 示例 L25 源程序：平衡树实现 Map
 │  └─ map.pcode
 ├─ extension            
-│  ├─ l25-vscode-0.1.0.vsix // 语言服务器 Linux VSCode 插件
+│  ├─ l25-vscode-0.1.1.vsix // 语言服务器 Linux VSCode 插件
 │  └─ ...
 ├─ build.sh                 // 构建脚本
 ├─ run.sh                   // 编译并执行脚本

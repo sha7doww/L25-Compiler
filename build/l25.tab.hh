@@ -102,7 +102,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 284 "source/l25.y"
+#line 290 "source/l25.y"
 
     long long ival;
     double fval;

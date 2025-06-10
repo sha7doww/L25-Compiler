@@ -33,13 +33,24 @@ struct Code
     long long val;
 };
 
-std::vector<Code> code;
+int preStk;
 std::vector<int> codeStk;
+std::vector<Code> code, codePre;
 
 int emit(const std::string& op, long long val = 0)
 {
     int idx = code.size();
     code.push_back({op, val});
+    return idx;
+}
+int emitPre(const std::string& op, long long val = 0)
+{
+    int idx = preStk;
+    codePre.push_back({op, val});
+    if (op == "ADDSP")
+        preStk += val;
+    else
+        preStk++;
     return idx;
 }
 
@@ -258,21 +269,16 @@ std::string unescapeLiteral(const char *raw)
     return out;
 }
 
-std::vector<int> preVal;
-
-int addPre(long long val)
-{
-    int idx = preVal.size();
-    preVal.push_back(val);
-    return idx;
-}
 void generateCode()
 {
-    for (int val : preVal)
-        std::cout << "PUSH" << " " << val + preVal.size() << std::endl;
+    for (const auto& [op, val] : codePre)
+        if (op == "PUSH")
+            std::cout << op << " " << val + codePre.size() << std::endl;
+        else
+            std::cout << op << " " << val << std::endl;
     for (const auto& [op, val] : code)
         if (op == "JMP" || op == "JPC" || op == "PUSHE")
-            std::cout << op << " " << val + preVal.size() << std::endl;
+            std::cout << op << " " << val + codePre.size() << std::endl;
         else
             std::cout << op << " " << val << std::endl;
     return;
@@ -365,8 +371,8 @@ global_list_opt
 declare_def
 :   LET IDENT ':' type_spec
     {
-        declare($2, $4, addPre(0), SCOPE_GLOBAL);
-        emit("ADDSP", typeTable[$4].size - 1);
+        declare($2, $4,
+            emitPre("ADDSP", typeTable[$4].size), SCOPE_GLOBAL);
     }
 ;
 
@@ -424,7 +430,7 @@ func_def
 
         typeStk.push_back({});
 
-        entAddr = addPre(code.size());
+        entAddr = emitPre("PUSH", code.size());
 
     }
     arg_list_opt ')' ':'

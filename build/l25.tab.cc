@@ -100,13 +100,24 @@ struct Code
     long long val;
 };
 
-std::vector<Code> code;
+int preStk;
 std::vector<int> codeStk;
+std::vector<Code> code, codePre;
 
 int emit(const std::string& op, long long val = 0)
 {
     int idx = code.size();
     code.push_back({op, val});
+    return idx;
+}
+int emitPre(const std::string& op, long long val = 0)
+{
+    int idx = preStk;
+    codePre.push_back({op, val});
+    if (op == "ADDSP")
+        preStk += val;
+    else
+        preStk++;
     return idx;
 }
 
@@ -325,28 +336,23 @@ std::string unescapeLiteral(const char *raw)
     return out;
 }
 
-std::vector<int> preVal;
-
-int addPre(long long val)
-{
-    int idx = preVal.size();
-    preVal.push_back(val);
-    return idx;
-}
 void generateCode()
 {
-    for (int val : preVal)
-        std::cout << "PUSH" << " " << val + preVal.size() << std::endl;
+    for (const auto& [op, val] : codePre)
+        if (op == "PUSH")
+            std::cout << op << " " << val + codePre.size() << std::endl;
+        else
+            std::cout << op << " " << val << std::endl;
     for (const auto& [op, val] : code)
         if (op == "JMP" || op == "JPC" || op == "PUSHE")
-            std::cout << op << " " << val + preVal.size() << std::endl;
+            std::cout << op << " " << val + codePre.size() << std::endl;
         else
             std::cout << op << " " << val << std::endl;
     return;
 }
 
 
-#line 350 "build/l25.tab.cc"
+#line 356 "build/l25.tab.cc"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -894,21 +900,21 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   321,   321,   328,   320,   359,   360,   361,   362,   366,
-     375,   374,   395,   396,   400,   401,   405,   420,   431,   441,
-     450,   419,   483,   484,   488,   489,   493,   502,   506,   510,
-     514,   518,   522,   526,   537,   541,   546,   545,   557,   558,
-     562,   566,   570,   577,   578,   580,   579,   588,   587,   598,
-     599,   600,   601,   602,   603,   607,   608,   609,   613,   617,
-     622,   640,   654,   686,   691,   696,   701,   705,   711,   723,
-     731,   740,   752,   787,   806,   836,   852,   868,   875,   897,
-     919,   941,   963,   991,  1019,  1026,  1042,  1058,  1074,  1081,
-    1097,  1113,  1120,  1167,  1213,  1220,  1255,  1277,  1293,  1300,
-    1323,  1327,  1331,  1415,  1419,  1423,  1427,  1441,  1455,  1467,
-    1487,  1494,  1486,  1502,  1508,  1507,  1532,  1537,  1531,  1560,
-    1567,  1571,  1559,  1596,  1595,  1632,  1631,  1693,  1692,  1766,
-    1767,  1771,  1787,  1806,  1810,  1851,  1895,  1899,  1928,  1960,
-    1968
+       0,   327,   327,   334,   326,   365,   366,   367,   368,   372,
+     381,   380,   401,   402,   406,   407,   411,   426,   437,   447,
+     456,   425,   489,   490,   494,   495,   499,   508,   512,   516,
+     520,   524,   528,   532,   543,   547,   552,   551,   563,   564,
+     568,   572,   576,   583,   584,   586,   585,   594,   593,   604,
+     605,   606,   607,   608,   609,   613,   614,   615,   619,   623,
+     628,   646,   660,   692,   697,   702,   707,   711,   717,   729,
+     737,   746,   758,   793,   812,   842,   858,   874,   881,   903,
+     925,   947,   969,   997,  1025,  1032,  1048,  1064,  1080,  1087,
+    1103,  1119,  1126,  1173,  1219,  1226,  1261,  1283,  1299,  1306,
+    1329,  1333,  1337,  1421,  1425,  1429,  1433,  1447,  1461,  1473,
+    1493,  1500,  1492,  1508,  1514,  1513,  1538,  1543,  1537,  1566,
+    1573,  1577,  1565,  1602,  1601,  1638,  1637,  1699,  1698,  1772,
+    1773,  1777,  1793,  1812,  1816,  1857,  1901,  1905,  1934,  1966,
+    1974
 };
 #endif
 
@@ -2181,18 +2187,18 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* $@1: %empty  */
-#line 321 "source/l25.y"
+#line 327 "source/l25.y"
     {
         initBasicTypes();
 
         int jmp = emit("JMP");
         codeStk.push_back(jmp);
     }
-#line 2192 "build/l25.tab.cc"
+#line 2198 "build/l25.tab.cc"
     break;
 
   case 3: /* $@2: %empty  */
-#line 328 "source/l25.y"
+#line 334 "source/l25.y"
     {
         int jmp = codeStk.back();
         codeStk.pop_back();
@@ -2207,11 +2213,11 @@ yyreduce:
         int addsp = emit("ADDSP");
         codeStk.push_back(addsp);
     }
-#line 2211 "build/l25.tab.cc"
+#line 2217 "build/l25.tab.cc"
     break;
 
   case 4: /* program: PROGRAM IDENT '{' $@1 global_list_opt MAIN '{' $@2 stmt_list '}' '}'  */
-#line 343 "source/l25.y"
+#line 349 "source/l25.y"
     {
         scopes.pop_back();
 
@@ -2225,26 +2231,26 @@ yyreduce:
         generateCode();
         exit(0);
     }
-#line 2229 "build/l25.tab.cc"
-    break;
-
-  case 5: /* global_list_opt: %empty  */
-#line 359 "source/l25.y"
-                  {}
 #line 2235 "build/l25.tab.cc"
     break;
 
+  case 5: /* global_list_opt: %empty  */
+#line 365 "source/l25.y"
+                  {}
+#line 2241 "build/l25.tab.cc"
+    break;
+
   case 9: /* declare_def: LET IDENT ':' type_spec  */
-#line 367 "source/l25.y"
+#line 373 "source/l25.y"
     {
-        declare((yyvsp[-2].sval), (yyvsp[0].ival), addPre(0), SCOPE_GLOBAL);
-        emit("ADDSP", typeTable[(yyvsp[0].ival)].size - 1);
+        declare((yyvsp[-2].sval), (yyvsp[0].ival),
+            emitPre("ADDSP", typeTable[(yyvsp[0].ival)].size), SCOPE_GLOBAL);
     }
-#line 2244 "build/l25.tab.cc"
+#line 2250 "build/l25.tab.cc"
     break;
 
   case 10: /* $@3: %empty  */
-#line 375 "source/l25.y"
+#line 381 "source/l25.y"
     {
         entType = structType((yyvsp[-1].sval));
         declare((yyvsp[-1].sval), entType, 0, SCOPE_GLOBAL);
@@ -2253,11 +2259,11 @@ yyreduce:
 
         fieldStk.push_back({});
     }
-#line 2257 "build/l25.tab.cc"
+#line 2263 "build/l25.tab.cc"
     break;
 
   case 11: /* struct_def: STRUCT IDENT '{' $@3 field_list_opt '}'  */
-#line 384 "source/l25.y"
+#line 390 "source/l25.y"
     {
         fixStructType(entType, fieldStk.back());
         entType = TYPE_VOID;
@@ -2266,17 +2272,17 @@ yyreduce:
 
         fieldStk.pop_back();
     }
-#line 2270 "build/l25.tab.cc"
-    break;
-
-  case 12: /* field_list_opt: %empty  */
-#line 395 "source/l25.y"
-                  {}
 #line 2276 "build/l25.tab.cc"
     break;
 
+  case 12: /* field_list_opt: %empty  */
+#line 401 "source/l25.y"
+                  {}
+#line 2282 "build/l25.tab.cc"
+    break;
+
   case 16: /* field_def: IDENT ':' type_spec ';'  */
-#line 406 "source/l25.y"
+#line 412 "source/l25.y"
     {
         if ((yyvsp[-1].ival) == entType)
         {
@@ -2287,11 +2293,11 @@ yyreduce:
         declare((yyvsp[-3].sval), (yyvsp[-1].ival), 0, SCOPE_LOCAL);
         fieldStk.back()[(yyvsp[-3].sval)] = {int((yyvsp[-1].ival)), -1};
     }
-#line 2291 "build/l25.tab.cc"
+#line 2297 "build/l25.tab.cc"
     break;
 
   case 17: /* $@4: %empty  */
-#line 420 "source/l25.y"
+#line 426 "source/l25.y"
     {
         scopes.push_back({});
 
@@ -2299,14 +2305,14 @@ yyreduce:
 
         typeStk.push_back({});
 
-        entAddr = addPre(code.size());
+        entAddr = emitPre("PUSH", code.size());
 
     }
-#line 2306 "build/l25.tab.cc"
+#line 2312 "build/l25.tab.cc"
     break;
 
   case 18: /* $@5: %empty  */
-#line 431 "source/l25.y"
+#line 437 "source/l25.y"
     {
         emit("PUSHFP");
         emit("MOVFP");
@@ -2316,11 +2322,11 @@ yyreduce:
 
         curLocal = 0;
     }
-#line 2320 "build/l25.tab.cc"
+#line 2326 "build/l25.tab.cc"
     break;
 
   case 19: /* $@6: %empty  */
-#line 441 "source/l25.y"
+#line 447 "source/l25.y"
     {
         int type = funcType((yyvsp[-1].ival), typeStk.back());
         declare((yyvsp[-8].sval), type, entAddr, SCOPE_GLOBAL);
@@ -2329,11 +2335,11 @@ yyreduce:
             if (name != (yyvsp[-8].sval))
                 s.addr -= 2 + funcDef[typeTable[type].index].argSize;
     }
-#line 2333 "build/l25.tab.cc"
+#line 2339 "build/l25.tab.cc"
     break;
 
   case 20: /* $@7: %empty  */
-#line 450 "source/l25.y"
+#line 456 "source/l25.y"
     {
         if ((yyvsp[-6].ival) != (yyvsp[-1].ival))
         {
@@ -2363,75 +2369,75 @@ yyreduce:
    
         typeStk.pop_back();
     }
-#line 2367 "build/l25.tab.cc"
-    break;
-
-  case 22: /* arg_list_opt: %empty  */
-#line 483 "source/l25.y"
-                  {}
 #line 2373 "build/l25.tab.cc"
     break;
 
+  case 22: /* arg_list_opt: %empty  */
+#line 489 "source/l25.y"
+                  {}
+#line 2379 "build/l25.tab.cc"
+    break;
+
   case 26: /* arg_def: IDENT ':' type_spec  */
-#line 494 "source/l25.y"
+#line 500 "source/l25.y"
     {
         declare((yyvsp[-2].sval), (yyvsp[0].ival), curLocal, SCOPE_LOCAL);
         curLocal += typeTable[(yyvsp[0].ival)].size;
         typeStk.back().push_back((yyvsp[0].ival));
     }
-#line 2383 "build/l25.tab.cc"
+#line 2389 "build/l25.tab.cc"
     break;
 
   case 27: /* type_spec: INT  */
-#line 503 "source/l25.y"
+#line 509 "source/l25.y"
     {
         (yyval.ival) = TYPE_INT;
     }
-#line 2391 "build/l25.tab.cc"
+#line 2397 "build/l25.tab.cc"
     break;
 
   case 28: /* type_spec: BOOL  */
-#line 507 "source/l25.y"
+#line 513 "source/l25.y"
     {
         (yyval.ival) = TYPE_BOOL;
     }
-#line 2399 "build/l25.tab.cc"
+#line 2405 "build/l25.tab.cc"
     break;
 
   case 29: /* type_spec: CHAR  */
-#line 511 "source/l25.y"
+#line 517 "source/l25.y"
     {
         (yyval.ival) = TYPE_CHAR;
     }
-#line 2407 "build/l25.tab.cc"
+#line 2413 "build/l25.tab.cc"
     break;
 
   case 30: /* type_spec: VOID  */
-#line 515 "source/l25.y"
+#line 521 "source/l25.y"
     {
         (yyval.ival) = TYPE_VOID;
     }
-#line 2415 "build/l25.tab.cc"
+#line 2421 "build/l25.tab.cc"
     break;
 
   case 31: /* type_spec: FLOAT  */
-#line 519 "source/l25.y"
+#line 525 "source/l25.y"
     {
         (yyval.ival) = TYPE_FLOAT;
     }
-#line 2423 "build/l25.tab.cc"
+#line 2429 "build/l25.tab.cc"
     break;
 
   case 32: /* type_spec: STRING  */
-#line 523 "source/l25.y"
+#line 529 "source/l25.y"
     {
         (yyval.ival) = TYPE_STRING;
     }
-#line 2431 "build/l25.tab.cc"
+#line 2437 "build/l25.tab.cc"
     break;
 
   case 33: /* type_spec: STRUCT IDENT  */
-#line 527 "source/l25.y"
+#line 533 "source/l25.y"
     {
         Sym& s = find((yyvsp[0].sval));
         if (typeTable[s.type].kind != TYPE_STRUCT)
@@ -2442,131 +2448,131 @@ yyreduce:
         }
         (yyval.ival) = s.type;
     }
-#line 2446 "build/l25.tab.cc"
+#line 2452 "build/l25.tab.cc"
     break;
 
   case 34: /* type_spec: type_spec '*'  */
-#line 538 "source/l25.y"
+#line 544 "source/l25.y"
     {
         (yyval.ival) = ptrType((yyvsp[-1].ival));
     }
-#line 2454 "build/l25.tab.cc"
+#line 2460 "build/l25.tab.cc"
     break;
 
   case 35: /* type_spec: type_spec '[' INT_CONST ']'  */
-#line 542 "source/l25.y"
+#line 548 "source/l25.y"
     {
         (yyval.ival) = arrType((yyvsp[-3].ival), (yyvsp[-1].ival));
     }
-#line 2462 "build/l25.tab.cc"
+#line 2468 "build/l25.tab.cc"
     break;
 
   case 36: /* $@8: %empty  */
-#line 546 "source/l25.y"
+#line 552 "source/l25.y"
     {
         typeStk.push_back({});
     }
-#line 2470 "build/l25.tab.cc"
+#line 2476 "build/l25.tab.cc"
     break;
 
   case 37: /* type_spec: FUNC type_spec '(' $@8 type_spec_list_opt ')'  */
-#line 550 "source/l25.y"
+#line 556 "source/l25.y"
     {
         (yyval.ival) = funcType((yyvsp[-4].ival), typeStk.back());
         typeStk.pop_back();
     }
-#line 2479 "build/l25.tab.cc"
-    break;
-
-  case 38: /* type_spec_list_opt: %empty  */
-#line 557 "source/l25.y"
-                  {}
 #line 2485 "build/l25.tab.cc"
     break;
 
-  case 40: /* type_spec_list: type_spec  */
+  case 38: /* type_spec_list_opt: %empty  */
 #line 563 "source/l25.y"
+                  {}
+#line 2491 "build/l25.tab.cc"
+    break;
+
+  case 40: /* type_spec_list: type_spec  */
+#line 569 "source/l25.y"
     {
         typeStk.back().push_back((yyvsp[0].ival));
     }
-#line 2493 "build/l25.tab.cc"
+#line 2499 "build/l25.tab.cc"
     break;
 
   case 41: /* type_spec_list: type_spec_list ',' type_spec  */
-#line 567 "source/l25.y"
+#line 573 "source/l25.y"
     {
         typeStk.back().push_back((yyvsp[0].ival));
     }
-#line 2501 "build/l25.tab.cc"
+#line 2507 "build/l25.tab.cc"
     break;
 
   case 42: /* type_spec_list: THIS  */
-#line 571 "source/l25.y"
+#line 577 "source/l25.y"
     {
         typeStk.back().push_back(ptrType(entType));
     }
-#line 2509 "build/l25.tab.cc"
+#line 2515 "build/l25.tab.cc"
     break;
 
   case 45: /* $@9: %empty  */
-#line 580 "source/l25.y"
+#line 586 "source/l25.y"
     {
         scopes.push_back({});
     }
-#line 2517 "build/l25.tab.cc"
+#line 2523 "build/l25.tab.cc"
     break;
 
   case 46: /* stmt_list: '{' $@9 stmt_list '}' ';'  */
-#line 584 "source/l25.y"
+#line 590 "source/l25.y"
     {
         scopes.pop_back();
     }
-#line 2525 "build/l25.tab.cc"
+#line 2531 "build/l25.tab.cc"
     break;
 
   case 47: /* $@10: %empty  */
-#line 588 "source/l25.y"
+#line 594 "source/l25.y"
     {
         scopes.push_back({});
     }
-#line 2533 "build/l25.tab.cc"
+#line 2539 "build/l25.tab.cc"
     break;
 
   case 48: /* stmt_list: stmt_list '{' $@10 stmt_list '}' ';'  */
-#line 592 "source/l25.y"
+#line 598 "source/l25.y"
     {
         scopes.pop_back();
     }
-#line 2541 "build/l25.tab.cc"
+#line 2547 "build/l25.tab.cc"
     break;
 
   case 54: /* stmt: func_call  */
-#line 604 "source/l25.y"
-    {
-        emit("ADDSP", -typeTable[(yyvsp[0].ival)].size);
-    }
-#line 2549 "build/l25.tab.cc"
-    break;
-
-  case 57: /* stmt: alloc_call  */
 #line 610 "source/l25.y"
     {
         emit("ADDSP", -typeTable[(yyvsp[0].ival)].size);
     }
-#line 2557 "build/l25.tab.cc"
+#line 2555 "build/l25.tab.cc"
+    break;
+
+  case 57: /* stmt: alloc_call  */
+#line 616 "source/l25.y"
+    {
+        emit("ADDSP", -typeTable[(yyvsp[0].ival)].size);
+    }
+#line 2563 "build/l25.tab.cc"
     break;
 
   case 59: /* declare_stmt: LET IDENT ':' type_spec  */
-#line 618 "source/l25.y"
+#line 624 "source/l25.y"
     {
         declare((yyvsp[-2].sval), (yyvsp[0].ival), curLocal, SCOPE_LOCAL);
         curLocal += typeTable[(yyvsp[0].ival)].size;
     }
-#line 2566 "build/l25.tab.cc"
+#line 2572 "build/l25.tab.cc"
     break;
 
   case 60: /* declare_stmt: LET IDENT ':' type_spec '=' right_expr  */
-#line 623 "source/l25.y"
+#line 629 "source/l25.y"
     {
         if ((yyvsp[-2].ival) != (yyvsp[0].ival))
         {
@@ -2584,11 +2590,11 @@ yyreduce:
         }
         curLocal += typeTable[(yyvsp[-2].ival)].size;
     }
-#line 2588 "build/l25.tab.cc"
+#line 2594 "build/l25.tab.cc"
     break;
 
   case 61: /* declare_stmt: LET IDENT '=' right_expr  */
-#line 641 "source/l25.y"
+#line 647 "source/l25.y"
     {
         declare((yyvsp[-2].sval), (yyvsp[0].ival), curLocal, SCOPE_LOCAL);
         for (int i = typeTable[(yyvsp[0].ival)].size; i--;)
@@ -2599,11 +2605,11 @@ yyreduce:
         }
         curLocal += typeTable[(yyvsp[0].ival)].size;
     }
-#line 2603 "build/l25.tab.cc"
+#line 2609 "build/l25.tab.cc"
     break;
 
   case 62: /* assign_stmt: left_expr '=' right_expr  */
-#line 655 "source/l25.y"
+#line 661 "source/l25.y"
     {
         if ((yyvsp[-2].ival) != (yyvsp[0].ival))
         {
@@ -2632,56 +2638,56 @@ yyreduce:
             emit("POP");
         }
     }
-#line 2636 "build/l25.tab.cc"
+#line 2642 "build/l25.tab.cc"
     break;
 
   case 63: /* const_expr: INT_CONST  */
-#line 687 "source/l25.y"
+#line 693 "source/l25.y"
     {
         emit("PUSH", (yyvsp[0].ival));
         (yyval.ival) = TYPE_INT;
     }
-#line 2645 "build/l25.tab.cc"
+#line 2651 "build/l25.tab.cc"
     break;
 
   case 64: /* const_expr: BOOL_CONST  */
-#line 692 "source/l25.y"
+#line 698 "source/l25.y"
     {
         emit("PUSH", (yyvsp[0].ival));
         (yyval.ival) = TYPE_BOOL;
     }
-#line 2654 "build/l25.tab.cc"
+#line 2660 "build/l25.tab.cc"
     break;
 
   case 65: /* const_expr: CHAR_CONST  */
-#line 697 "source/l25.y"
+#line 703 "source/l25.y"
     {
         emit("PUSH", (yyvsp[0].cval));
         (yyval.ival) = TYPE_CHAR;
     }
-#line 2663 "build/l25.tab.cc"
+#line 2669 "build/l25.tab.cc"
     break;
 
   case 66: /* const_expr: VOID_CONST  */
-#line 702 "source/l25.y"
+#line 708 "source/l25.y"
     {
         (yyval.ival) = TYPE_VOID;
     }
-#line 2671 "build/l25.tab.cc"
+#line 2677 "build/l25.tab.cc"
     break;
 
   case 67: /* const_expr: FLOAT_CONST  */
-#line 706 "source/l25.y"
+#line 712 "source/l25.y"
     {
         double f = (yyvsp[0].fval);
         emit("PUSH", std::bit_cast<long long>(f));
         (yyval.ival) = TYPE_FLOAT;
     }
-#line 2681 "build/l25.tab.cc"
+#line 2687 "build/l25.tab.cc"
     break;
 
   case 68: /* const_expr: STRING_CONST  */
-#line 712 "source/l25.y"
+#line 718 "source/l25.y"
     {
         std::string str = unescapeLiteral((yyvsp[0].sval));
         for (int i = 0; i < 256; i++)
@@ -2693,20 +2699,20 @@ yyreduce:
         }
         (yyval.ival) = TYPE_STRING;
     }
-#line 2697 "build/l25.tab.cc"
+#line 2703 "build/l25.tab.cc"
     break;
 
   case 69: /* const_expr: SIZEOF '(' type_spec ')'  */
-#line 724 "source/l25.y"
+#line 730 "source/l25.y"
     {
         emit("PUSH", typeTable[(yyvsp[-1].ival)].size);
         (yyval.ival) = TYPE_INT;
     }
-#line 2706 "build/l25.tab.cc"
+#line 2712 "build/l25.tab.cc"
     break;
 
   case 70: /* left_expr: IDENT  */
-#line 732 "source/l25.y"
+#line 738 "source/l25.y"
     {
         Sym& s = find((yyvsp[0].sval));
         (yyval.ival) = s.type;
@@ -2715,11 +2721,11 @@ yyreduce:
         else
             emit("PUSH", s.addr);
     }
-#line 2719 "build/l25.tab.cc"
+#line 2725 "build/l25.tab.cc"
     break;
 
   case 71: /* left_expr: '*' factor  */
-#line 741 "source/l25.y"
+#line 747 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind != TYPE_PTR)
         {
@@ -2731,11 +2737,11 @@ yyreduce:
         (yyval.ival) = ptrDef[ptrIdx].baseType;
 
     }
-#line 2735 "build/l25.tab.cc"
+#line 2741 "build/l25.tab.cc"
     break;
 
   case 72: /* left_expr: left_expr '[' right_expr ']'  */
-#line 753 "source/l25.y"
+#line 759 "source/l25.y"
     {
         if (typeTable[(yyvsp[-1].ival)].kind != TYPE_INT)
         {
@@ -2770,11 +2776,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2774 "build/l25.tab.cc"
+#line 2780 "build/l25.tab.cc"
     break;
 
   case 73: /* left_expr: left_expr '.' IDENT  */
-#line 788 "source/l25.y"
+#line 794 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind != TYPE_STRUCT)
         {
@@ -2793,11 +2799,11 @@ yyreduce:
         (yyval.ival) = it->second.type;
         emit("PADDRF", it->second.offset);
     }
-#line 2797 "build/l25.tab.cc"
+#line 2803 "build/l25.tab.cc"
     break;
 
   case 74: /* left_expr: factor ARROW IDENT  */
-#line 807 "source/l25.y"
+#line 813 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind != TYPE_PTR)
         {
@@ -2824,11 +2830,11 @@ yyreduce:
         (yyval.ival) = it->second.type;
         emit("PADDRF", it->second.offset);
     }
-#line 2828 "build/l25.tab.cc"
+#line 2834 "build/l25.tab.cc"
     break;
 
   case 75: /* right_expr: right_expr AND compare_expr  */
-#line 837 "source/l25.y"
+#line 843 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_BOOL &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_BOOL)
@@ -2844,11 +2850,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2848 "build/l25.tab.cc"
+#line 2854 "build/l25.tab.cc"
     break;
 
   case 76: /* right_expr: right_expr OR compare_expr  */
-#line 853 "source/l25.y"
+#line 859 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_BOOL &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_BOOL)
@@ -2864,19 +2870,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 2868 "build/l25.tab.cc"
+#line 2874 "build/l25.tab.cc"
     break;
 
   case 77: /* right_expr: compare_expr  */
-#line 869 "source/l25.y"
+#line 875 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 2876 "build/l25.tab.cc"
+#line 2882 "build/l25.tab.cc"
     break;
 
   case 78: /* compare_expr: bitwise_expr '<' bitwise_expr  */
-#line 876 "source/l25.y"
+#line 882 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -2898,11 +2904,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2902 "build/l25.tab.cc"
+#line 2908 "build/l25.tab.cc"
     break;
 
   case 79: /* compare_expr: bitwise_expr '>' bitwise_expr  */
-#line 898 "source/l25.y"
+#line 904 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -2924,11 +2930,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2928 "build/l25.tab.cc"
+#line 2934 "build/l25.tab.cc"
     break;
 
   case 80: /* compare_expr: bitwise_expr LE bitwise_expr  */
-#line 920 "source/l25.y"
+#line 926 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -2950,11 +2956,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2954 "build/l25.tab.cc"
+#line 2960 "build/l25.tab.cc"
     break;
 
   case 81: /* compare_expr: bitwise_expr GE bitwise_expr  */
-#line 942 "source/l25.y"
+#line 948 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -2976,11 +2982,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 2980 "build/l25.tab.cc"
+#line 2986 "build/l25.tab.cc"
     break;
 
   case 82: /* compare_expr: bitwise_expr EQ bitwise_expr  */
-#line 964 "source/l25.y"
+#line 970 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3008,11 +3014,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3012 "build/l25.tab.cc"
+#line 3018 "build/l25.tab.cc"
     break;
 
   case 83: /* compare_expr: bitwise_expr NEQ bitwise_expr  */
-#line 992 "source/l25.y"
+#line 998 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3040,19 +3046,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 3044 "build/l25.tab.cc"
+#line 3050 "build/l25.tab.cc"
     break;
 
   case 84: /* compare_expr: bitwise_expr  */
-#line 1020 "source/l25.y"
+#line 1026 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3052 "build/l25.tab.cc"
+#line 3058 "build/l25.tab.cc"
     break;
 
   case 85: /* bitwise_expr: bitwise_expr '&' bitwise_term  */
-#line 1027 "source/l25.y"
+#line 1033 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3068,11 +3074,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3072 "build/l25.tab.cc"
+#line 3078 "build/l25.tab.cc"
     break;
 
   case 86: /* bitwise_expr: bitwise_expr '|' bitwise_term  */
-#line 1043 "source/l25.y"
+#line 1049 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3088,11 +3094,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3092 "build/l25.tab.cc"
+#line 3098 "build/l25.tab.cc"
     break;
 
   case 87: /* bitwise_expr: bitwise_expr '^' bitwise_term  */
-#line 1059 "source/l25.y"
+#line 1065 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3108,19 +3114,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 3112 "build/l25.tab.cc"
+#line 3118 "build/l25.tab.cc"
     break;
 
   case 88: /* bitwise_expr: bitwise_term  */
-#line 1075 "source/l25.y"
+#line 1081 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3120 "build/l25.tab.cc"
+#line 3126 "build/l25.tab.cc"
     break;
 
   case 89: /* bitwise_term: bitwise_term LSH arith_expr  */
-#line 1082 "source/l25.y"
+#line 1088 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3136,11 +3142,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3140 "build/l25.tab.cc"
+#line 3146 "build/l25.tab.cc"
     break;
 
   case 90: /* bitwise_term: bitwise_term RSH arith_expr  */
-#line 1098 "source/l25.y"
+#line 1104 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3156,19 +3162,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 3160 "build/l25.tab.cc"
+#line 3166 "build/l25.tab.cc"
     break;
 
   case 91: /* bitwise_term: arith_expr  */
-#line 1114 "source/l25.y"
+#line 1120 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3168 "build/l25.tab.cc"
+#line 3174 "build/l25.tab.cc"
     break;
 
   case 92: /* arith_expr: arith_expr '+' arith_term  */
-#line 1121 "source/l25.y"
+#line 1127 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3215,11 +3221,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3219 "build/l25.tab.cc"
+#line 3225 "build/l25.tab.cc"
     break;
 
   case 93: /* arith_expr: arith_expr '-' arith_term  */
-#line 1168 "source/l25.y"
+#line 1174 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3265,19 +3271,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 3269 "build/l25.tab.cc"
+#line 3275 "build/l25.tab.cc"
     break;
 
   case 94: /* arith_expr: arith_term  */
-#line 1214 "source/l25.y"
+#line 1220 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3277 "build/l25.tab.cc"
+#line 3283 "build/l25.tab.cc"
     break;
 
   case 95: /* arith_term: arith_term '*' factor  */
-#line 1221 "source/l25.y"
+#line 1227 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3312,11 +3318,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3316 "build/l25.tab.cc"
+#line 3322 "build/l25.tab.cc"
     break;
 
   case 96: /* arith_term: arith_term '/' factor  */
-#line 1256 "source/l25.y"
+#line 1262 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3338,11 +3344,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 3342 "build/l25.tab.cc"
+#line 3348 "build/l25.tab.cc"
     break;
 
   case 97: /* arith_term: arith_term '%' factor  */
-#line 1278 "source/l25.y"
+#line 1284 "source/l25.y"
     {
         if (typeTable[(yyvsp[-2].ival)].kind == TYPE_INT &&
             typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
@@ -3358,19 +3364,19 @@ yyreduce:
             exit(1);
         }
     }
-#line 3362 "build/l25.tab.cc"
+#line 3368 "build/l25.tab.cc"
     break;
 
   case 98: /* arith_term: factor  */
-#line 1294 "source/l25.y"
+#line 1300 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3370 "build/l25.tab.cc"
+#line 3376 "build/l25.tab.cc"
     break;
 
   case 99: /* factor: left_expr  */
-#line 1301 "source/l25.y"
+#line 1307 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].size == 1)
             emit("LOD", 0);
@@ -3393,27 +3399,27 @@ yyreduce:
         }
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3397 "build/l25.tab.cc"
+#line 3403 "build/l25.tab.cc"
     break;
 
   case 100: /* factor: const_expr  */
-#line 1324 "source/l25.y"
+#line 1330 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3405 "build/l25.tab.cc"
+#line 3411 "build/l25.tab.cc"
     break;
 
   case 101: /* factor: '(' right_expr ')'  */
-#line 1328 "source/l25.y"
+#line 1334 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[-1].ival);
     }
-#line 3413 "build/l25.tab.cc"
+#line 3419 "build/l25.tab.cc"
     break;
 
   case 102: /* factor: type_spec '(' right_expr ')'  */
-#line 1332 "source/l25.y"
+#line 1338 "source/l25.y"
     {
         if ((yyvsp[-1].ival) == (yyvsp[-3].ival))
             ;
@@ -3497,35 +3503,35 @@ yyreduce:
             exit(1);
         }
     }
-#line 3501 "build/l25.tab.cc"
+#line 3507 "build/l25.tab.cc"
     break;
 
   case 103: /* factor: func_call  */
-#line 1416 "source/l25.y"
+#line 1422 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3509 "build/l25.tab.cc"
+#line 3515 "build/l25.tab.cc"
     break;
 
   case 104: /* factor: alloc_call  */
-#line 1420 "source/l25.y"
+#line 1426 "source/l25.y"
     {
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3517 "build/l25.tab.cc"
+#line 3523 "build/l25.tab.cc"
     break;
 
   case 105: /* factor: '&' left_expr  */
-#line 1424 "source/l25.y"
+#line 1430 "source/l25.y"
     {
         (yyval.ival) = ptrType((yyvsp[0].ival));
     }
-#line 3525 "build/l25.tab.cc"
+#line 3531 "build/l25.tab.cc"
     break;
 
   case 106: /* factor: '-' factor  */
-#line 1428 "source/l25.y"
+#line 1434 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
             emit("NEG");
@@ -3539,11 +3545,11 @@ yyreduce:
         }
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3543 "build/l25.tab.cc"
+#line 3549 "build/l25.tab.cc"
     break;
 
   case 107: /* factor: '+' factor  */
-#line 1442 "source/l25.y"
+#line 1448 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
             ;
@@ -3557,11 +3563,11 @@ yyreduce:
         }
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3561 "build/l25.tab.cc"
+#line 3567 "build/l25.tab.cc"
     break;
 
   case 108: /* factor: '~' factor  */
-#line 1456 "source/l25.y"
+#line 1462 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
             emit("COMPL");
@@ -3573,11 +3579,11 @@ yyreduce:
         }
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3577 "build/l25.tab.cc"
+#line 3583 "build/l25.tab.cc"
     break;
 
   case 109: /* factor: '!' factor  */
-#line 1468 "source/l25.y"
+#line 1474 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_BOOL)
         {
@@ -3593,40 +3599,40 @@ yyreduce:
         }
         (yyval.ival) = (yyvsp[0].ival);
     }
-#line 3597 "build/l25.tab.cc"
+#line 3603 "build/l25.tab.cc"
     break;
 
   case 110: /* $@11: %empty  */
-#line 1487 "source/l25.y"
+#line 1493 "source/l25.y"
     {
         int jpc = emit("JPC");
         codeStk.push_back(jpc);
 
         scopes.push_back({});
     }
-#line 3608 "build/l25.tab.cc"
+#line 3614 "build/l25.tab.cc"
     break;
 
   case 111: /* $@12: %empty  */
-#line 1494 "source/l25.y"
+#line 1500 "source/l25.y"
     {
         scopes.pop_back();
     }
-#line 3616 "build/l25.tab.cc"
+#line 3622 "build/l25.tab.cc"
     break;
 
   case 113: /* else_opt: %empty  */
-#line 1502 "source/l25.y"
+#line 1508 "source/l25.y"
     {
         int jpc = codeStk.back();
         codeStk.pop_back();
         code[jpc].val = code.size();
     }
-#line 3626 "build/l25.tab.cc"
+#line 3632 "build/l25.tab.cc"
     break;
 
   case 114: /* $@13: %empty  */
-#line 1508 "source/l25.y"
+#line 1514 "source/l25.y"
     {   
         int jpc = codeStk.back();
         codeStk.pop_back();
@@ -3639,11 +3645,11 @@ yyreduce:
 
         scopes.push_back({});
     }
-#line 3643 "build/l25.tab.cc"
+#line 3649 "build/l25.tab.cc"
     break;
 
   case 115: /* else_opt: ELSE '{' $@13 stmt_list '}'  */
-#line 1521 "source/l25.y"
+#line 1527 "source/l25.y"
     {
         scopes.pop_back();
 
@@ -3651,31 +3657,31 @@ yyreduce:
         codeStk.pop_back();
         code[jmp].val = code.size();
     }
-#line 3655 "build/l25.tab.cc"
+#line 3661 "build/l25.tab.cc"
     break;
 
   case 116: /* $@14: %empty  */
-#line 1532 "source/l25.y"
+#line 1538 "source/l25.y"
     {
         int top = code.size();
         codeStk.push_back(top);
     }
-#line 3664 "build/l25.tab.cc"
+#line 3670 "build/l25.tab.cc"
     break;
 
   case 117: /* $@15: %empty  */
-#line 1537 "source/l25.y"
+#line 1543 "source/l25.y"
     {
         int jpc = emit("JPC");
         codeStk.push_back(jpc);
 
         scopes.push_back({});
     }
-#line 3675 "build/l25.tab.cc"
+#line 3681 "build/l25.tab.cc"
     break;
 
   case 118: /* while_stmt: WHILE '(' $@14 right_expr ')' '{' $@15 stmt_list '}'  */
-#line 1544 "source/l25.y"
+#line 1550 "source/l25.y"
     {
         scopes.pop_back();
 
@@ -3688,30 +3694,30 @@ yyreduce:
         emit("JMP", top);
         code[jpc].val = code.size();
     }
-#line 3692 "build/l25.tab.cc"
+#line 3698 "build/l25.tab.cc"
     break;
 
   case 119: /* $@16: %empty  */
-#line 1560 "source/l25.y"
+#line 1566 "source/l25.y"
     {
         int pushe = emit("PUSHE");
         codeStk.push_back(pushe);
 
         scopes.push_back({});
     }
-#line 3703 "build/l25.tab.cc"
+#line 3709 "build/l25.tab.cc"
     break;
 
   case 120: /* $@17: %empty  */
-#line 1567 "source/l25.y"
+#line 1573 "source/l25.y"
     {
         scopes.pop_back();
     }
-#line 3711 "build/l25.tab.cc"
+#line 3717 "build/l25.tab.cc"
     break;
 
   case 121: /* $@18: %empty  */
-#line 1571 "source/l25.y"
+#line 1577 "source/l25.y"
     {
         emit("POPE");
         
@@ -3725,11 +3731,11 @@ yyreduce:
 
         scopes.push_back({});
     }
-#line 3729 "build/l25.tab.cc"
+#line 3735 "build/l25.tab.cc"
     break;
 
   case 122: /* try_catch_stmt: TRY '{' $@16 stmt_list '}' $@17 CATCH '{' $@18 stmt_list '}'  */
-#line 1585 "source/l25.y"
+#line 1591 "source/l25.y"
     {   
         scopes.pop_back();
 
@@ -3737,11 +3743,11 @@ yyreduce:
         codeStk.pop_back();
         code[jmp].val = code.size();
     }
-#line 3741 "build/l25.tab.cc"
+#line 3747 "build/l25.tab.cc"
     break;
 
   case 123: /* $@19: %empty  */
-#line 1596 "source/l25.y"
+#line 1602 "source/l25.y"
     {
         Sym& s = find((yyvsp[-1].sval));
         if (typeTable[s.type].kind != TYPE_FUNC)
@@ -3757,11 +3763,11 @@ yyreduce:
         emit("ADDSP",
              typeTable[funcDef[typeTable[s.type].index].retType].size);
     }
-#line 3761 "build/l25.tab.cc"
+#line 3767 "build/l25.tab.cc"
     break;
 
   case 124: /* func_call: IDENT '(' $@19 param_list_opt ')'  */
-#line 1612 "source/l25.y"
+#line 1618 "source/l25.y"
     {
         Sym& s = find((yyvsp[-4].sval));
         if (paramStk.back() < typeStk.back().size())
@@ -3781,11 +3787,11 @@ yyreduce:
         emit("ADDSP", -funcDef[typeTable[s.type].index].argSize);
         (yyval.ival) = funcDef[typeTable[s.type].index].retType;
     }
-#line 3785 "build/l25.tab.cc"
+#line 3791 "build/l25.tab.cc"
     break;
 
   case 125: /* $@20: %empty  */
-#line 1632 "source/l25.y"
+#line 1638 "source/l25.y"
     {
         if (typeTable[(yyvsp[-3].ival)].kind != TYPE_STRUCT)
         {
@@ -3813,11 +3819,11 @@ yyreduce:
         emit("PUSH");
         emit("SWAP", typeTable[retType].size + 2);
     }
-#line 3817 "build/l25.tab.cc"
+#line 3823 "build/l25.tab.cc"
     break;
 
   case 126: /* func_call: left_expr '.' IDENT '(' $@20 param_list_opt ')'  */
-#line 1660 "source/l25.y"
+#line 1666 "source/l25.y"
     {
         int structIdx = typeTable[(yyvsp[-6].ival)].index;
         auto it = structDef[structIdx].field.find((yyvsp[-4].sval));
@@ -3850,11 +3856,11 @@ yyreduce:
         emit("POP");
         (yyval.ival) = retType;
     }
-#line 3854 "build/l25.tab.cc"
+#line 3860 "build/l25.tab.cc"
     break;
 
   case 127: /* $@21: %empty  */
-#line 1693 "source/l25.y"
+#line 1699 "source/l25.y"
     {
         if (typeTable[(yyvsp[-3].ival)].kind != TYPE_PTR)
         {
@@ -3890,11 +3896,11 @@ yyreduce:
         emit("PUSH");
         emit("SWAP", typeTable[retType].size + 2);
     }
-#line 3894 "build/l25.tab.cc"
+#line 3900 "build/l25.tab.cc"
     break;
 
   case 128: /* func_call: factor ARROW IDENT '(' $@21 param_list_opt ')'  */
-#line 1729 "source/l25.y"
+#line 1735 "source/l25.y"
     {
         int ptrIdx = typeTable[(yyvsp[-6].ival)].index;
         int type = ptrDef[ptrIdx].baseType;
@@ -3929,17 +3935,17 @@ yyreduce:
         emit("POP");
         (yyval.ival) = retType;
     }
-#line 3933 "build/l25.tab.cc"
-    break;
-
-  case 129: /* param_list_opt: %empty  */
-#line 1766 "source/l25.y"
-                  {}
 #line 3939 "build/l25.tab.cc"
     break;
 
-  case 131: /* param_list: right_expr  */
+  case 129: /* param_list_opt: %empty  */
 #line 1772 "source/l25.y"
+                  {}
+#line 3945 "build/l25.tab.cc"
+    break;
+
+  case 131: /* param_list: right_expr  */
+#line 1778 "source/l25.y"
     {
         if (paramStk.back() >= typeStk.back().size())
         {
@@ -3955,11 +3961,11 @@ yyreduce:
         }
         paramStk.back()++;
     }
-#line 3959 "build/l25.tab.cc"
+#line 3965 "build/l25.tab.cc"
     break;
 
   case 132: /* param_list: param_list ',' right_expr  */
-#line 1788 "source/l25.y"
+#line 1794 "source/l25.y"
     {
         if (paramStk.back() >= typeStk.back().size())
         {
@@ -3975,11 +3981,11 @@ yyreduce:
         }
         paramStk.back()++;
     }
-#line 3979 "build/l25.tab.cc"
+#line 3985 "build/l25.tab.cc"
     break;
 
   case 134: /* in_arg_list: left_expr  */
-#line 1811 "source/l25.y"
+#line 1817 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
         {
@@ -4020,11 +4026,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 4024 "build/l25.tab.cc"
+#line 4030 "build/l25.tab.cc"
     break;
 
   case 135: /* in_arg_list: in_arg_list ',' left_expr  */
-#line 1852 "source/l25.y"
+#line 1858 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
         {
@@ -4065,11 +4071,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 4069 "build/l25.tab.cc"
+#line 4075 "build/l25.tab.cc"
     break;
 
   case 137: /* out_arg_list: right_expr  */
-#line 1900 "source/l25.y"
+#line 1906 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
         {
@@ -4098,11 +4104,11 @@ yyreduce:
             exit(1);
         }
     }
-#line 4102 "build/l25.tab.cc"
+#line 4108 "build/l25.tab.cc"
     break;
 
   case 138: /* out_arg_list: out_arg_list ',' right_expr  */
-#line 1929 "source/l25.y"
+#line 1935 "source/l25.y"
     {
         if (typeTable[(yyvsp[0].ival)].kind == TYPE_INT)
         {
@@ -4131,28 +4137,28 @@ yyreduce:
             exit(1);
         }
     }
-#line 4135 "build/l25.tab.cc"
+#line 4141 "build/l25.tab.cc"
     break;
 
   case 139: /* alloc_call: ALLOC '(' right_expr ')'  */
-#line 1961 "source/l25.y"
+#line 1967 "source/l25.y"
     {
         emit("ALLOC");
         (yyval.ival) = ptrType(TYPE_VOID);
     }
-#line 4144 "build/l25.tab.cc"
+#line 4150 "build/l25.tab.cc"
     break;
 
   case 140: /* free_call: FREE '(' right_expr ')'  */
-#line 1969 "source/l25.y"
+#line 1975 "source/l25.y"
     {
         emit("FREE");
     }
-#line 4152 "build/l25.tab.cc"
+#line 4158 "build/l25.tab.cc"
     break;
 
 
-#line 4156 "build/l25.tab.cc"
+#line 4162 "build/l25.tab.cc"
 
       default: break;
     }
@@ -4381,7 +4387,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1974 "source/l25.y"
+#line 1980 "source/l25.y"
 
 
 void yyerror(const char* msg)

@@ -1,0 +1,11 @@
+program MyApp {
+    main {
+        let n = 7;
+        let fact = 1;
+        while (n > 1) {
+            fact = fact * 2;
+            n = n - 1;
+        };
+        output(n, '\n', fact);
+    }
+}

@@ -1,0 +1,15 @@
+program FactApp {
+    func fact(n) {
+        if (n <= 1) {
+            return 1;
+        } else {
+            return n * fact(n - 1);
+        };
+    }
+
+    main {
+        let n = 5;
+        let result = fact(n);
+        output(result);
+    }
+}

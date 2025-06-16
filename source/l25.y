@@ -309,6 +309,7 @@ void generateCode()
 %type <ival> type_spec func_call alloc_call
 %type <ival> const_expr left_expr right_expr compare_expr
 %type <ival> bitwise_expr bitwise_term arith_expr arith_term factor
+%type <ival> return_type_opt
 
 %nonassoc '='
 %left AND OR
@@ -433,53 +434,56 @@ func_def
         entAddr = emitPre("PUSH", code.size());
 
     }
-    arg_list_opt ')' ':'
+    arg_list_opt ')' return_type_opt          
     {
-        emit("PUSHFP");
-        emit("MOVFP");
+        
+        entType = $7;   
 
+        int protoRet = (entType == -1 ? TYPE_VOID : entType);
+        int protoType = funcType(protoRet, typeStk.back());
+        declare($2, protoType, entAddr, SCOPE_GLOBAL);             
+
+        
+        emit("PUSHFP"); emit("MOVFP");
         int addsp = emit("ADDSP");
         codeStk.push_back(addsp);
 
-        curLocal = 0;
+        
+        int argSize = 0;
+        for (int t : typeStk.back()) argSize += typeTable[t].size;
+        for (auto& [name, s] : scopes.back())
+            if (name != $2) s.addr -= 2 + argSize;
     }
-    type_spec '{'
-    {
-        int type = funcType($9, typeStk.back());
-        declare($2, type, entAddr, SCOPE_GLOBAL);
-
-        for (auto& [name, s]: scopes.back())
-            if (name != $2)
-                s.addr -= 2 + funcDef[typeTable[type].index].argSize;
-    }
+    '{'
     stmt_list RETURN right_expr ';'
     {
-        if ($9 != $14)
-        {
-            yyerror(("syntax error, expected \"" + typeTable[$9].name +
-                     "\", found \"" + typeTable[$14].name + "\"").c_str());
+        
+        int retType = (entType == -1 ? $12 : entType);   
+        if (entType != -1 && entType != $12) {
+            yyerror(("syntax error, expected \"" +
+                    typeTable[entType].name + "\", found \"" +
+                    typeTable[$12].name + "\"").c_str());
             exit(1);
         }
 
+        
         scopes.pop_back();
-
-        int addsp = codeStk.back();
-        codeStk.pop_back();
-        int type = funcType($9, typeStk.back());
-        declare($2, type, entAddr, SCOPE_GLOBAL);
+        int addsp = codeStk.back(); codeStk.pop_back();
         code[addsp].val = curLocal;
 
-        for (int i = typeTable[$9].size; i--; )
-        {
-            emit("PADDRL", -3 - funcDef[typeTable[type].index].argSize - i);
-            emit("SWAP", 1);
-            emit("STR");
+        
+        int fType = funcType(retType, typeStk.back());
+        declare($2, fType, entAddr, SCOPE_GLOBAL);
+
+        
+        for (int i = typeTable[retType].size; i--; ) {
+            emit("PADDRL", -3 - funcDef[typeTable[fType].index].argSize - i);
+            emit("SWAP", 1); emit("STR");
         }
 
         emit("ADDSP", -curLocal);
-        emit("POPFP");
-        emit("RET");
-   
+        emit("POPFP"); emit("RET");
+
         typeStk.pop_back();
     }
     '}'
@@ -488,6 +492,11 @@ func_def
 arg_list_opt
 :   /* epsilon */ {}
 |   arg_list
+;
+
+return_type_opt
+    : ':' type_spec   { $$ = $2; }
+    |                 { $$ = -1;   }
 ;
 
 arg_list

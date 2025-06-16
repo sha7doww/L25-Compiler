@@ -1,0 +1,15 @@
+program FibApp {
+    func fib(n: int) {
+        if (n <= 1) {
+            return n;
+        } else {
+            return fib(n - 1) + fib(n - 2);
+        };
+    }
+
+    main {
+        let n = 10;
+        let result = fib(n);
+        output(result);
+    }
+}

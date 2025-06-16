@@ -1,0 +1,36 @@
+program MyApp {
+ func add(a, b) {
+ let sum = a + b;
+ return sum;
+ }
+ func square(x) {
+ let result = x * x;
+if(result>10){
+result=add(result,10);
+};
+ return result;
+ }
+ main {
+ let x=5;
+ let y = add(x, 10);
+ let z = square(y);
+ let total = 0;
+ let i = 1;
+ while (i <= x) {
+   total = total + i;
+   i = i + 1;
+ };
+
+ if (z > 50) {
+   let g=1;
+   output(z);
+   if(z>20){
+     g=square(x);
+     output(g);
+   };
+ } else {
+   output(0);
+ };
+ output(total);
+ }
+}

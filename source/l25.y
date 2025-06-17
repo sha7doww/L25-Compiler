@@ -62,6 +62,7 @@ enum TypeKind
     TYPE_VOID,
     TYPE_FLOAT,
     TYPE_STRING,
+    TYPE_AUTO, 
     TYPE_PTR,
     TYPE_ARR,
     TYPE_FUNC,
@@ -78,6 +79,7 @@ std::vector<TypeInfo> typeTable;
 std::map<int, int> ptrTypeMap;
 std::map<int, std::map<int, int>> arrTypeMap;
 std::map<int, std::map<std::vector<int>, int>> funcTypeMap;
+int TYPE_AUTO_ID = -1;
 
 void initBasicTypes()
 {
@@ -87,6 +89,8 @@ void initBasicTypes()
     typeTable.push_back({"void", TYPE_VOID, 0, -1});
     typeTable.push_back({"float", TYPE_FLOAT, 1, -1});
     typeTable.push_back({"string", TYPE_STRING, 256, -1});
+    typeTable.push_back({"auto", TYPE_AUTO, 1, -1});
+    int TYPE_AUTO_ID = typeTable.size() - 1;   // 以后直接用
 }
 
 struct StructDef
@@ -217,6 +221,7 @@ int entType, entAddr;
 std::vector<int> paramStk;
 std::vector<std::vector<int>> typeStk;
 std::vector<std::map<std::string, StructDef::Field>> fieldStk;
+std::vector<Sym*> calleeStk;   // 每遇到一次 func_call 入栈
 
 std::vector<std::map<std::string, Sym>> scopes(1);
 
@@ -236,6 +241,16 @@ void declare(const std::string& id, int type, int addr, ScopeKind kind)
         exit(1);
     }
     scopes.back()[id] = {type, addr, kind};
+}
+
+void unify(Sym &s, int realType)
+{
+    if (s.type == TYPE_AUTO_ID) {
+        s.type = realType;
+        for (auto &vec : typeStk)
+            for (int &t : vec)
+                if (t == TYPE_AUTO_ID) t = realType;
+    }
 }
 
 std::string unescapeLiteral(const char *raw)
@@ -471,7 +486,12 @@ func_def
         int addsp = codeStk.back(); codeStk.pop_back();
         code[addsp].val = curLocal;
 
-        
+        /* new: 所有形参必须已推断完成 */
+        // for (int t : typeStk.back())
+        //     if (t == TYPE_AUTO_ID) {
+        //         yyerror("cannot infer parameter type");
+        //         exit(1);
+        //     }
         int fType = funcType(retType, typeStk.back());
         declare($2, fType, entAddr, SCOPE_GLOBAL);
 
@@ -510,6 +530,12 @@ arg_def
         declare($1, $3, curLocal, SCOPE_LOCAL);
         curLocal += typeTable[$3].size;
         typeStk.back().push_back($3);
+    }
+| IDENT                /* 省略类型，待推断 */
+    {
+        declare($1, TYPE_AUTO_ID, curLocal, SCOPE_LOCAL);
+        curLocal += 1;                      // 先占 1 word
+        typeStk.back().push_back(TYPE_AUTO_ID);
     }
 ;
 
@@ -746,6 +772,7 @@ left_expr
 :   IDENT
     {
         Sym& s = find($1);
+        // unify(s, s.type); /* 如果后面再推断会再次调用 */
         $$ = s.type;
         if (s.kind == SCOPE_LOCAL)
             emit("PADDRL", s.addr);
@@ -1790,7 +1817,9 @@ param_list
             yyerror("syntax error, too many parameters");
             exit(1);
         }
-        if ($1 != typeStk.back()[paramStk.back()])
+        int &formal = typeStk.back()[paramStk.back()];
+        if (formal == TYPE_AUTO_ID) formal = $1;   /* 首次使用即锁定 */
+        if ($1 != formal)
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +
@@ -1806,7 +1835,9 @@ param_list
             yyerror("syntax error, too many parameters");
             exit(1);
         }
-        if ($3 != typeStk.back()[paramStk.back()])
+        int &formal = typeStk.back()[paramStk.back()];
+        if (formal == TYPE_AUTO_ID) formal = $3;
+        if ($3 != formal)
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +

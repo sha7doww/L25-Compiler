@@ -1928,7 +1928,7 @@ input_call
 in_arg_list
 :   left_expr
     {
-        if (typeTable[$1].kind == TYPE_INT)
+        if (typeTable[$1].kind == TYPE_INT || typeTable[$1].kind == TYPE_AUTO)
         {
             emit("SCAN");
             emit("STR");

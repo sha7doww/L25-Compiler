@@ -1,0 +1,16 @@
+program MyApp { 
+    func div(a: int, b: int) { 
+        let res = a / b;
+        return res;
+    }
+  
+    main { 
+        let x = 10;
+        let y = 0;
+        try {
+            output(div(x, y), '\n');
+        } catch {
+            output("div 0\n");
+        };
+    }
+}

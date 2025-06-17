@@ -459,7 +459,7 @@ func_def
         
         entType = $7;   
 
-        int protoRet = (entType == -1 ? TYPE_VOID : entType);
+        int protoRet = (entType == -1 ? TYPE_AUTO_ID : entType);
         int protoType = funcType(protoRet, typeStk.back());
         declare($2, protoType, entAddr, SCOPE_GLOBAL);             
 
@@ -1874,7 +1874,7 @@ param_list
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +
-                     ", found \"" + typeTable[$1].name + "\"").c_str());
+                     "\", found \"" + typeTable[$1].name + "\"").c_str());
             exit(1);
         }
         paramStk.back()++;
@@ -1903,7 +1903,7 @@ param_list
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +
-                     ", found \"" + typeTable[$3].name + "\"").c_str());
+                     "\", found \"" + typeTable[$3].name + "\"").c_str());
             exit(1);
         }
         paramStk.back()++;

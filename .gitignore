@@ -2,3 +2,4 @@ build
 *.pcode
 source/l25.l.txt
 source/l25.y.txt
+*.out

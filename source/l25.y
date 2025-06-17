@@ -90,7 +90,7 @@ void initBasicTypes()
     typeTable.push_back({"float", TYPE_FLOAT, 1, -1});
     typeTable.push_back({"string", TYPE_STRING, 256, -1});
     typeTable.push_back({"auto", TYPE_AUTO, 1, -1});
-    int TYPE_AUTO_ID = typeTable.size() - 1;   // 以后直接用
+    TYPE_AUTO_ID = typeTable.size() - 1;   // 以后直接用
 }
 
 struct StructDef
@@ -916,7 +916,12 @@ right_expr
 compare_expr
 :   bitwise_expr '<' bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("LT");
+            $$ = TYPE_BOOL;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("LT");
@@ -938,7 +943,12 @@ compare_expr
     }
 |   bitwise_expr '>' bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("GT");           /* 你的整型 > 指令 */
+            $$ = TYPE_BOOL;       /* 比较结果恒为 bool */
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("GT");
@@ -960,7 +970,12 @@ compare_expr
     }
 |   bitwise_expr LE bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("LE");
+            $$ = TYPE_BOOL;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("LE");
@@ -982,7 +997,12 @@ compare_expr
     }
 |   bitwise_expr GE bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("GE");
+            $$ = TYPE_BOOL;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("GE");
@@ -1004,7 +1024,12 @@ compare_expr
     }
 |   bitwise_expr EQ bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("EQ");
+            $$ = TYPE_BOOL;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("EQ");
@@ -1032,7 +1057,12 @@ compare_expr
     }
 |   bitwise_expr NEQ bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("NEQ");
+            $$ = TYPE_BOOL;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("NEQ");
@@ -1161,7 +1191,13 @@ bitwise_term
 arith_expr
 :   arith_expr '+' arith_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("ADD");
+            $$ = TYPE_AUTO_ID;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("ADD");
@@ -1208,7 +1244,12 @@ arith_expr
     }
 |   arith_expr '-' arith_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("SUB");
+            $$ = TYPE_AUTO_ID;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("SUB");
@@ -1261,7 +1302,12 @@ arith_expr
 arith_term
 :   arith_term '*' factor
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("MUL");
+            $$ = TYPE_AUTO_ID;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("MUL");
@@ -1296,7 +1342,12 @@ arith_term
     }
 |   arith_term '/' factor
     {
-        if (typeTable[$1].kind == TYPE_INT &&
+        if (typeTable[$1].kind == TYPE_AUTO ||
+            typeTable[$3].kind == TYPE_AUTO) {
+            emit("DIV");
+            $$ = TYPE_AUTO_ID;
+        }
+        else if (typeTable[$1].kind == TYPE_INT &&
             typeTable[$3].kind == TYPE_INT)
         {
             emit("DIV");
@@ -1636,6 +1687,8 @@ try_catch_stmt
 func_call
 :   IDENT '('
     {
+        Sym* f = &find($1);
+        calleeStk.push_back(f);
         Sym& s = find($1);
         if (typeTable[s.type].kind != TYPE_FUNC)
         {
@@ -1827,6 +1880,17 @@ param_list
             exit(1);
         }
         paramStk.back()++;
+        if (paramStk.back() == typeStk.back().size()) {
+            // 所有实参已处理完 —— 更新函数原型
+            Sym* f = calleeStk.back();
+            int newProto = funcType(funcDef[typeTable[f->type].index].retType,
+                                    typeStk.back());
+            f->type = newProto;
+
+            // 弹栈收尾
+            calleeStk.pop_back();
+            // paramStk.pop_back();
+        }        
     }
 |   param_list ',' right_expr
     {
@@ -1845,6 +1909,17 @@ param_list
             exit(1);
         }
         paramStk.back()++;
+        if (paramStk.back() == typeStk.back().size()) {
+            // 所有实参已处理完 —— 更新函数原型
+            Sym* f = calleeStk.back();
+            int newProto = funcType(funcDef[typeTable[f->type].index].retType,
+                                    typeStk.back());
+            f->type = newProto;
+
+            // 弹栈收尾
+            calleeStk.pop_back();
+            // paramStk.pop_back();
+        }
     }
 ;
 
@@ -1944,7 +2019,11 @@ output_call
 out_arg_list
 :   right_expr
     {
-        if (typeTable[$1].kind == TYPE_INT)
+        if (typeTable[$1].kind == TYPE_AUTO)
+        {
+            emit("PRINT");
+        }
+        else if (typeTable[$1].kind == TYPE_INT)
         {
             emit("PRINT");
         }
@@ -1973,7 +2052,11 @@ out_arg_list
     }
 |   out_arg_list ',' right_expr
     {
-        if (typeTable[$3].kind == TYPE_INT)
+        if (typeTable[$3].kind == TYPE_AUTO)
+        {
+            emit("PRINT");
+        }
+        else if (typeTable[$3].kind == TYPE_INT)
         {
             emit("PRINT");
         }

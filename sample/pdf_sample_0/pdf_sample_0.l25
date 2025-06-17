@@ -19,6 +19,6 @@ program MyApp {
  } else { 
  output(0); 
  }; 
- output('\n', add(x,y));
+ output('\n', add(x,y), '\n');
  }
-} 
+}

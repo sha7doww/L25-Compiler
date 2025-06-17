@@ -1,5 +1,5 @@
 program FibApp {
-    func fib(n: int) {
+    func fib(n) {
         if (n <= 1) {
             return n;
         } else {

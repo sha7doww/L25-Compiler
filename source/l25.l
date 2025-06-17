@@ -344,7 +344,7 @@ void yyerror(const char*);
     yylval.cval = c;
     return CHAR_CONST;
 }
-(default|DEFAULT)  {
+(null|NULL)  {
     yylloc.first_line   = yylineno;
     yylloc.first_column = yycolumn;
     yylloc.last_line    = yylineno;

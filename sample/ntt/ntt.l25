@@ -3,7 +3,7 @@ program Ntt {
         let tmp = *x;
         *x = *y;
         *y = tmp;
-        return default;
+        return null;
     }
 
     let mod: int
@@ -53,7 +53,7 @@ program Ntt {
             len = len << 1;
             idx = idx + 1;
         };
-        if (rev != int*(default)) {
+        if (rev != int*(null)) {
             free(rev);
         };
         rev = int*(alloc(len));
@@ -62,7 +62,7 @@ program Ntt {
             rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (idx - 1));
             i = i + 1;
         };
-        return default;
+        return null;
     }
 
     func ntt(a: int*): void{
@@ -94,7 +94,7 @@ program Ntt {
             };
             i = i << 1;
         };
-        return default;
+        return null;
     }
 
     func intt(a: int*): void{
@@ -116,14 +116,14 @@ program Ntt {
                 i = i + 1;
             };
         };
-        return default;
+        return null;
     }
 
     main
     {
         mod = 998244353;
         root = 3;
-        rev = int*(default);
+        rev = int*(null);
 
         let n: int;
         let m: int;

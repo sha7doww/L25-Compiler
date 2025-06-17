@@ -32,7 +32,7 @@ program Sort{
             };
             free(buf);
         };
-        return default;
+        return null;
     }
 
     func cmp(x: int, y: int): bool{

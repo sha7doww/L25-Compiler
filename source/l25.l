@@ -3,7 +3,7 @@
 
 %{
 
-#include "l25.tab.hh"
+#include "l25.tab.h"
 extern YYLTYPE yylloc;
 static int yycolumn = 1;
 void yyerror(const char*);

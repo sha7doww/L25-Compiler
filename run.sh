@@ -50,8 +50,6 @@ fi
 # Run steps
 build/compiler     < "$INPUT"   > "$PCODE"
 
-if $DEBUG; then
-  build/interpreterd "$PCODE"
-else
-  build/interpreter  "$PCODE"
-fi
+
+build/interpreter  "$PCODE"
+

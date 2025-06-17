@@ -1,0 +1,16 @@
+program GCDApp {
+    func gcd(a, b) {
+        let res = a;
+        if (b != 0) {
+            res = gcd(b, a % b);
+        };
+        return res;
+    }
+
+    main {
+        let x = 35;
+        let y = 40;
+        let result = gcd(x, y);
+        output(result, '\n');
+    }
+}

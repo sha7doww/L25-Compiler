@@ -1,0 +1,13 @@
+program MyApp { 
+    func add(a: string, b: string) { 
+        let sum = a + b; 
+        return sum; 
+    } 
+  
+    main { 
+        let x = "sha7dow"; 
+        let y: string;
+        input(y); 
+        output(add(add(x, "-"), y),'\n');
+    }
+} 

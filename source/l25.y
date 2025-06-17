@@ -476,7 +476,7 @@ func_def
         declare($2, fType, entAddr, SCOPE_GLOBAL);
 
         
-        for (int i = typeTable[retType].size; i--; ) {
+        for (int i = 0; i < typeTable[retType].size; i++) {
             emit("PADDRL", -3 - funcDef[typeTable[fType].index].argSize - i);
             emit("SWAP", 1); emit("STR");
         }

@@ -62,6 +62,7 @@ enum TypeKind
     TYPE_VOID,
     TYPE_FLOAT,
     TYPE_STRING,
+    TYPE_AUTO, 
     TYPE_PTR,
     TYPE_ARR,
     TYPE_FUNC,
@@ -78,6 +79,7 @@ std::vector<TypeInfo> typeTable;
 std::map<int, int> ptrTypeMap;
 std::map<int, std::map<int, int>> arrTypeMap;
 std::map<int, std::map<std::vector<int>, int>> funcTypeMap;
+int TYPE_AUTO_ID = -1;
 
 void initBasicTypes()
 {
@@ -87,6 +89,8 @@ void initBasicTypes()
     typeTable.push_back({"void", TYPE_VOID, 0, -1});
     typeTable.push_back({"float", TYPE_FLOAT, 1, -1});
     typeTable.push_back({"string", TYPE_STRING, 256, -1});
+    typeTable.push_back({"auto", TYPE_AUTO, 1, -1});
+    TYPE_AUTO_ID = typeTable.size() - 1;   // 以后直接用
 }
 
 struct StructDef
@@ -217,6 +221,7 @@ int entType, entAddr;
 std::vector<int> paramStk;
 std::vector<std::vector<int>> typeStk;
 std::vector<std::map<std::string, StructDef::Field>> fieldStk;
+std::vector<Sym*> calleeStk;   // 每遇到一次 func_call 入栈
 
 std::vector<std::map<std::string, Sym>> scopes(1);
 
@@ -236,6 +241,16 @@ void declare(const std::string& id, int type, int addr, ScopeKind kind)
         exit(1);
     }
     scopes.back()[id] = {type, addr, kind};
+}
+
+void unify(Sym &s, int realType)
+{
+    if (s.type == TYPE_AUTO_ID) {
+        s.type = realType;
+        for (auto &vec : typeStk)
+            for (int &t : vec)
+                if (t == TYPE_AUTO_ID) t = realType;
+    }
 }
 
 std::string unescapeLiteral(const char *raw)
@@ -370,7 +385,12 @@ global_list_opt
 ;
 
 declare_def
-:   LET IDENT ':' type_spec
+:   LET IDENT
+    {
+        declare($2, TYPE_AUTO_ID,
+            emitPre("ADDSP", 1), SCOPE_GLOBAL);
+    }
+|   LET IDENT ':' type_spec
     {
         declare($2, $4,
             emitPre("ADDSP", typeTable[$4].size), SCOPE_GLOBAL);
@@ -459,7 +479,7 @@ func_def
     {
         
         int retType = (entType == -1 ? $12 : entType);   
-        if (entType != -1 && entType != $12) {
+        if (entType != -1 && entType != $12 && !(entType == TYPE_AUTO || $12 == TYPE_AUTO)) {
             yyerror(("syntax error, expected \"" +
                     typeTable[entType].name + "\", found \"" +
                     typeTable[$12].name + "\"").c_str());
@@ -471,7 +491,12 @@ func_def
         int addsp = codeStk.back(); codeStk.pop_back();
         code[addsp].val = curLocal;
 
-        
+        /* new: 所有形参必须已推断完成 */
+        // for (int t : typeStk.back())
+        //     if (t == TYPE_AUTO_ID) {
+        //         yyerror("cannot infer parameter type");
+        //         exit(1);
+        //     }
         int fType = funcType(retType, typeStk.back());
         declare($2, fType, entAddr, SCOPE_GLOBAL);
 
@@ -510,6 +535,12 @@ arg_def
         declare($1, $3, curLocal, SCOPE_LOCAL);
         curLocal += typeTable[$3].size;
         typeStk.back().push_back($3);
+    }
+| IDENT                /* 省略类型，待推断 */
+    {
+        declare($1, TYPE_AUTO_ID, curLocal, SCOPE_LOCAL);
+        curLocal += 1;                      // 先占 1 word
+        typeStk.back().push_back(TYPE_AUTO_ID);
     }
 ;
 
@@ -629,14 +660,21 @@ stmt
 ;
 
 declare_stmt
-:   LET IDENT ':' type_spec
+:   LET IDENT
+    {
+        declare($2, TYPE_AUTO_ID, curLocal, SCOPE_LOCAL);
+        curLocal += 1;  // 先占 1 word
+    }
+
+|   LET IDENT ':' type_spec
     {
         declare($2, $4, curLocal, SCOPE_LOCAL);
         curLocal += typeTable[$4].size;
     }
 |   LET IDENT ':' type_spec '=' right_expr
     {
-        if ($4 != $6)
+        
+        if (!($6 == TYPE_AUTO || $4 == TYPE_AUTO) && $4 != $6)
         {
             yyerror(("syntax error, type dismatch, expected \"" +
                      typeTable[$4].name + "\", found \"" +
@@ -668,7 +706,7 @@ declare_stmt
 assign_stmt
 :   left_expr '=' right_expr
     {
-        if ($1 != $3)
+        if (!($1 == TYPE_AUTO || $3 == TYPE_AUTO) && $1 != $3)
         {
             yyerror(("syntax error, type dismatch, expected \"" +
                      typeTable[$1].name + "\", found \"" +
@@ -746,6 +784,7 @@ left_expr
 :   IDENT
     {
         Sym& s = find($1);
+        // unify(s, s.type); /* 如果后面再推断会再次调用 */
         $$ = s.type;
         if (s.kind == SCOPE_LOCAL)
             emit("PADDRL", s.addr);
@@ -850,8 +889,10 @@ left_expr
 right_expr
 :   right_expr AND compare_expr
     {
-        if (typeTable[$1].kind == TYPE_BOOL &&
-            typeTable[$3].kind == TYPE_BOOL)
+        if ((typeTable[$1].kind == TYPE_BOOL
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_BOOL
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("ANDB");
             $$ = TYPE_BOOL;
@@ -866,8 +907,10 @@ right_expr
     }
 |   right_expr OR compare_expr
     {
-        if (typeTable[$1].kind == TYPE_BOOL &&
-            typeTable[$3].kind == TYPE_BOOL)
+        if ((typeTable[$1].kind == TYPE_BOOL
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_BOOL
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("ORB");
             $$ = TYPE_BOOL;
@@ -889,8 +932,10 @@ right_expr
 compare_expr
 :   bitwise_expr '<' bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("LT");
             $$ = TYPE_BOOL;
@@ -911,8 +956,10 @@ compare_expr
     }
 |   bitwise_expr '>' bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("GT");
             $$ = TYPE_BOOL;
@@ -933,8 +980,10 @@ compare_expr
     }
 |   bitwise_expr LE bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("LE");
             $$ = TYPE_BOOL;
@@ -955,8 +1004,10 @@ compare_expr
     }
 |   bitwise_expr GE bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("GE");
             $$ = TYPE_BOOL;
@@ -977,8 +1028,10 @@ compare_expr
     }
 |   bitwise_expr EQ bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("EQ");
             $$ = TYPE_BOOL;
@@ -1005,8 +1058,10 @@ compare_expr
     }
 |   bitwise_expr NEQ bitwise_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("NEQ");
             $$ = TYPE_BOOL;
@@ -1040,8 +1095,10 @@ compare_expr
 bitwise_expr
 :   bitwise_expr '&' bitwise_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("AND");
             $$ = TYPE_INT;
@@ -1056,8 +1113,10 @@ bitwise_expr
     }
 |   bitwise_expr '|' bitwise_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("OR");
             $$ = TYPE_INT;
@@ -1072,8 +1131,10 @@ bitwise_expr
     }
 |   bitwise_expr '^' bitwise_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("XOR");
             $$ = TYPE_INT;
@@ -1095,8 +1156,10 @@ bitwise_expr
 bitwise_term
 :   bitwise_term LSH arith_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("LSH");
             $$ = TYPE_INT;
@@ -1111,8 +1174,10 @@ bitwise_term
     }
 |   bitwise_term RSH arith_expr
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("RSH");
             $$ = TYPE_INT;
@@ -1134,8 +1199,10 @@ bitwise_term
 arith_expr
 :   arith_expr '+' arith_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("ADD");
             $$ = TYPE_INT;
@@ -1181,8 +1248,11 @@ arith_expr
     }
 |   arith_expr '-' arith_term
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("SUB");
             $$ = TYPE_INT;
@@ -1234,8 +1304,10 @@ arith_expr
 arith_term
 :   arith_term '*' factor
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("MUL");
             $$ = TYPE_INT;
@@ -1269,8 +1341,10 @@ arith_term
     }
 |   arith_term '/' factor
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("DIV");
             $$ = TYPE_INT;
@@ -1291,8 +1365,10 @@ arith_term
     }
 |   arith_term '%' factor
     {
-        if (typeTable[$1].kind == TYPE_INT &&
-            typeTable[$3].kind == TYPE_INT)
+        if ((typeTable[$1].kind == TYPE_INT
+            || typeTable[$1].kind == TYPE_AUTO) &&
+           (typeTable[$3].kind == TYPE_INT
+            || typeTable[$3].kind == TYPE_AUTO))
         {
             emit("MOD");
             $$ = TYPE_INT;
@@ -1609,6 +1685,8 @@ try_catch_stmt
 func_call
 :   IDENT '('
     {
+        Sym* f = &find($1);
+        calleeStk.push_back(f);
         Sym& s = find($1);
         if (typeTable[s.type].kind != TYPE_FUNC)
         {
@@ -1790,7 +1868,9 @@ param_list
             yyerror("syntax error, too many parameters");
             exit(1);
         }
-        if ($1 != typeStk.back()[paramStk.back()])
+        int &formal = typeStk.back()[paramStk.back()];
+        if (formal == TYPE_AUTO_ID) formal = $1;   /* 首次使用即锁定 */
+        if ($1 != formal)
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +
@@ -1798,6 +1878,17 @@ param_list
             exit(1);
         }
         paramStk.back()++;
+        if (paramStk.back() == typeStk.back().size()) {
+            // 所有实参已处理完 —— 更新函数原型
+            Sym* f = calleeStk.back();
+            int newProto = funcType(funcDef[typeTable[f->type].index].retType,
+                                    typeStk.back());
+            f->type = newProto;
+
+            // 弹栈收尾
+            calleeStk.pop_back();
+            // paramStk.pop_back();
+        }        
     }
 |   param_list ',' right_expr
     {
@@ -1806,7 +1897,9 @@ param_list
             yyerror("syntax error, too many parameters");
             exit(1);
         }
-        if ($3 != typeStk.back()[paramStk.back()])
+        int &formal = typeStk.back()[paramStk.back()];
+        if (formal == TYPE_AUTO_ID) formal = $3;
+        if ($3 != formal)
         {
             yyerror(("syntax error, expected \"" +
                      typeTable[typeStk.back()[paramStk.back()]].name +
@@ -1814,6 +1907,17 @@ param_list
             exit(1);
         }
         paramStk.back()++;
+        if (paramStk.back() == typeStk.back().size()) {
+            // 所有实参已处理完 —— 更新函数原型
+            Sym* f = calleeStk.back();
+            int newProto = funcType(funcDef[typeTable[f->type].index].retType,
+                                    typeStk.back());
+            f->type = newProto;
+
+            // 弹栈收尾
+            calleeStk.pop_back();
+            // paramStk.pop_back();
+        }
     }
 ;
 
@@ -1913,7 +2017,11 @@ output_call
 out_arg_list
 :   right_expr
     {
-        if (typeTable[$1].kind == TYPE_INT)
+        if (typeTable[$1].kind == TYPE_AUTO)
+        {
+            emit("PRINT");
+        }
+        else if (typeTable[$1].kind == TYPE_INT)
         {
             emit("PRINT");
         }
@@ -1942,7 +2050,11 @@ out_arg_list
     }
 |   out_arg_list ',' right_expr
     {
-        if (typeTable[$3].kind == TYPE_INT)
+        if (typeTable[$3].kind == TYPE_AUTO)
+        {
+            emit("PRINT");
+        }
+        else if (typeTable[$3].kind == TYPE_INT)
         {
             emit("PRINT");
         }

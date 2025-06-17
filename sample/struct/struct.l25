@@ -1,0 +1,17 @@
+program MyApp {
+    struct Node {
+        name: string;
+        val: int;
+    }
+    func input_node() {
+        let node: struct Node;
+        input(node.name);
+        input(node.val);
+        return node;
+    }
+    main {
+        let node = input_node();
+        output(node.name, '\n');
+        output(node.val, '\n');
+    }
+}

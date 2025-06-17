@@ -1,10 +1,10 @@
 program MyApp { 
- func add(a: int, b: int) { 
+ func add(a, b) { 
  let sum = a + b; 
  return sum; 
  } 
   
- func square(x: int): int { 
+ func square(x) { 
  let result = x * x; 
  return result; 
  } 

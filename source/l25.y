@@ -385,7 +385,12 @@ global_list_opt
 ;
 
 declare_def
-:   LET IDENT ':' type_spec
+:   LET IDENT
+    {
+        declare($2, TYPE_AUTO_ID,
+            emitPre("ADDSP", 1), SCOPE_GLOBAL);
+    }
+|   LET IDENT ':' type_spec
     {
         declare($2, $4,
             emitPre("ADDSP", typeTable[$4].size), SCOPE_GLOBAL);
@@ -655,7 +660,13 @@ stmt
 ;
 
 declare_stmt
-:   LET IDENT ':' type_spec
+:   LET IDENT
+    {
+        declare($2, TYPE_AUTO_ID, curLocal, SCOPE_LOCAL);
+        curLocal += 1;  // 先占 1 word
+    }
+
+|   LET IDENT ':' type_spec
     {
         declare($2, $4, curLocal, SCOPE_LOCAL);
         curLocal += typeTable[$4].size;
@@ -663,7 +674,7 @@ declare_stmt
 |   LET IDENT ':' type_spec '=' right_expr
     {
         
-        if (!($6 == TYPE_AUTO) && $4 != $6)
+        if (!($6 == TYPE_AUTO || $4 == TYPE_AUTO) && $4 != $6)
         {
             yyerror(("syntax error, type dismatch, expected \"" +
                      typeTable[$4].name + "\", found \"" +

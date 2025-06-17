@@ -1,0 +1,31 @@
+program MyApp {
+
+    func add(a: int[10], b: int[10]) {
+        let c: int[10];
+        let n = 10;
+        let i = 0;
+        while (i < n) {
+            c[i] = a[i] + b[i];
+            i = i + 1;
+        };
+        return c;
+    }
+
+    main {
+        let a: int[10];
+        let b: int[10];
+        let n = 10;
+        let i = 0;
+        while (i < n) {
+            input(a[i]);
+            i = i + 1;
+        };
+        b = add(a, a);
+        i = 0;
+        while (i < n) {
+            output(b[i], ' ');
+            i = i + 1;
+        };
+        output('\n');
+    }
+}

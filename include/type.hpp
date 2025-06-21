@@ -34,7 +34,7 @@ void initBasicTypes() {
     typeTable.push_back({"float", TYPE_FLOAT, 1, -1});
     typeTable.push_back({"string", TYPE_STRING, 256, -1});
     typeTable.push_back({"auto", TYPE_AUTO, 1, -1});
-    TYPE_AUTO_ID = typeTable.size() - 1; // 以后直接用
+    TYPE_AUTO_ID = typeTable.size() - 1;
 }
 
 struct StructDef {

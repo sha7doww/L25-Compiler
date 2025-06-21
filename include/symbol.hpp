@@ -14,7 +14,7 @@ int entType, entAddr;
 std::vector<int> paramStk;
 std::vector<std::vector<int>> typeStk;
 std::vector<std::map<std::string, StructDef::Field>> fieldStk;
-std::vector<Sym*> calleeStk; // 每遇到一次 func_call 入栈
+std::vector<Sym*> calleeStk;
 
 std::vector<std::map<std::string, Sym>> scopes(1);
 

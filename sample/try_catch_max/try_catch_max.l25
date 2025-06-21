@@ -1,0 +1,32 @@
+program MyApp { 
+    func div(a: int, b: int) { 
+        let res = a / b;
+        return res;
+    }
+  
+    main { 
+        let x = 10;
+        let y = 0;
+        try {
+            try {
+                div(x, y);
+            } catch {
+                output("First: div 0\n");
+                div(x, y);
+            };
+            try {
+                div(x, y);
+            } catch {
+                output("Second: div 0\n");
+            };
+        } catch {
+            output("Third: div 0\n");
+
+            try {
+                div(x, y);
+            } catch {
+                output("Fourth: div 0\n");
+            };       
+        };
+    }
+}

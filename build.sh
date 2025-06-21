@@ -21,7 +21,7 @@ g++ -std=c++20 -Wno-free-nonheap-object \
     "${BUILD_DIR}/lexer.lex.cc"
 
 echo "Compiling interpreter (release build)"
-g++ -std=c++20 -DNDEBUG \
+g++ -std=c++20 -DUNDEBUG \
     -o "${BUILD_DIR}/interpreter" \
     "${SRC_DIR}/interpreter.cc"
 

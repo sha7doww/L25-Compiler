@@ -218,7 +218,7 @@ func_def
 
         
         for (int i = 0; i < typeTable[retType].size; i++) {
-            emit("PADDRL", -3 - funcDef[typeTable[fType].index].argSize - i);
+            emit("POPOFF", -3 - funcDef[typeTable[fType].index].argSize - i);
             emit("SWAP", 1); emit("STR");
         }
 
@@ -252,7 +252,7 @@ arg_def
         curLocal += typeTable[$3].size;
         typeStk.back().push_back($3);
     }
-| IDENT                /* 省略类型，待推断 */
+| IDENT
     {
         declare($1, TYPE_AUTO_ID, curLocal, SCOPE_LOCAL);
         curLocal += 1;                      // 先占 1 word
@@ -362,7 +362,7 @@ declare_stmt
         declare($2, $4, curLocal, SCOPE_LOCAL);
         for (int i = typeTable[$4].size; i--;)
         {
-            emit("PADDRL", curLocal + i);
+            emit("POPOFF", curLocal + i);
             emit("SWAP", 1);
             emit("STR");
         }
@@ -373,7 +373,7 @@ declare_stmt
         declare($2, $4, curLocal, SCOPE_LOCAL);
         for (int i = typeTable[$4].size; i--;)
         {
-            emit("PADDRL", curLocal + i);
+            emit("POPOFF", curLocal + i);
             emit("SWAP", 1);
             emit("STR");
         }
@@ -460,7 +460,7 @@ left_expr
         // unify(s, s.type); /* 如果后面再推断会再次调用 */
         $$ = s.type;
         if (s.kind == SCOPE_LOCAL)
-            emit("PADDRL", s.addr);
+            emit("POPOFF", s.addr);
         else
             emit("PUSH", s.addr);
     }
@@ -476,12 +476,12 @@ left_expr
         {
             int arrIdx = typeTable[$1].index;
             $$ = arrDef[arrIdx].baseType;
-            emit("PADDRA", typeTable[arrDef[arrIdx].baseType].size);
+            emit("POPIDX", typeTable[arrDef[arrIdx].baseType].size);
         }
         else if (typeTable[$1].kind == TYPE_STRING)
         {
             $$ = TYPE_CHAR;
-            emit("PADDRA", 1);
+            emit("POPIDX", 1);
         }
         else
         {
@@ -507,7 +507,7 @@ left_expr
             exit(1);
         }
         $$ = it->second.type;
-        emit("PADDRF", it->second.offset);
+        emit("POPBSE", it->second.offset);
     }
 ;
 
@@ -1267,7 +1267,7 @@ func_call
         typeStk.pop_back();
 
         if (s.kind == SCOPE_LOCAL)
-            emit("PADDRL", s.addr);
+            emit("POPOFF", s.addr);
         else
             emit("PUSH", s.addr);
         emit("LOD");

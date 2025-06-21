@@ -363,17 +363,17 @@ void run() {
                 std::exit(1);
             }
             PC++;
-        } else if (op == "PADDRL") {
+        } else if (op == "POPOFF") {
             long long addr = FP + val;
             push_stack(addr);
             PC++;
-        } else if (op == "PADDRA") {
+        } else if (op == "POPIDX") {
             long long idx = pop_stack();
             long long base = pop_stack();
             long long addr = base + idx * val;
             push_stack(addr);
             PC++;
-        } else if (op == "PADDRF") {
+        } else if (op == "POPBSE") {
             long long base = pop_stack();
             long long addr = base + val;
             push_stack(addr);
